@@ -89,6 +89,18 @@ export default function VideoPlayer({ server1Url, server2Url, server3Url, server
     };
   }, [currentUrl]);
 
+  const getStreamSource = (url: string): string => {
+    if (!url) return '';
+    if (url.startsWith('/') || url.startsWith('blob:') || url.startsWith('data:')) {
+      return url;
+    }
+    // Route external HTTP and HTTPS streams through our server-side secure referer-spoofing proxy
+    if (url.startsWith('http://') || url.startsWith('https://')) {
+      return `/api/proxy?url=${encodeURIComponent(url)}`;
+    }
+    return url;
+  };
+
   const initializePlayer = () => {
     if (!currentUrl) {
       setHasError(true);
@@ -116,7 +128,7 @@ export default function VideoPlayer({ server1Url, server2Url, server3Url, server
       });
 
       hlsRef.current = hls;
-      hls.loadSource(currentUrl);
+      hls.loadSource(getStreamSource(currentUrl));
       hls.attachMedia(video);
 
       hls.on(Hls.Events.MANIFEST_PARSED, () => {
@@ -153,7 +165,7 @@ export default function VideoPlayer({ server1Url, server2Url, server3Url, server
       });
     } else if (video.canPlayType('application/vnd.apple.mpegurl')) {
       // Native Apple HLS (Safari/iOS)
-      video.src = currentUrl;
+      video.src = getStreamSource(currentUrl);
       video.addEventListener('loadedmetadata', () => {
         video.play()
           .then(() => {
