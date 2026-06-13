@@ -14,7 +14,8 @@ import {
   AlertTriangle, 
   Code,
   Chrome,
-  Pencil
+  Pencil,
+  Smartphone
 } from 'lucide-react';
 import { Match, UpcomingMatch, Channel, GlobalSettings, SportCategory } from '../types';
 import { 
@@ -39,7 +40,7 @@ interface AdminPanelProps {
   onClose: () => void;
 }
 
-type AdminSubTab = 'live-matches' | 'scheduled' | 'iptv-channels' | 'ads-settings';
+type AdminSubTab = 'live-matches' | 'scheduled' | 'iptv-channels' | 'ads-settings' | 'android-build';
 
 export default function AdminPanel({ 
   currentSettings, 
@@ -371,6 +372,18 @@ export default function AdminPanel({
         >
           <Settings size={14} />
           <span>প্লাটফর্ম সেটিংস </span>
+        </button>
+
+        <button
+          onClick={() => setActiveSubTab('android-build')}
+          className={`px-4 py-2 text-xs sm:text-sm font-sans font-medium rounded-lg whitespace-nowrap transition flex items-center gap-1.5 ${
+            activeSubTab === 'android-build' 
+              ? 'bg-emerald-500 text-slate-950 font-bold' 
+              : 'text-slate-400 hover:text-white hover:bg-white/5'
+          }`}
+        >
+          <Smartphone size={14} />
+          <span className="text-rose-400 font-extrabold font-sans">অ্যান্ড্রয়েড অ্যাপ বিল্ডার 📱</span>
         </button>
       </div>
 
@@ -1119,6 +1132,223 @@ export default function AdminPanel({
               কনফিগারেশন সংরক্ষণ করুন
             </button>
           </form>
+        )}
+
+        {/* TAB 5: Android Build Assistant */}
+        {activeSubTab === 'android-build' && (
+          <div className="bg-black/20 border border-white/5 p-4 sm:p-6 rounded-xl flex flex-col gap-6 font-sans">
+            <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 border-b border-white/5 pb-4">
+              <div className="flex items-center gap-2">
+                <Smartphone className="text-emerald-400" size={20} />
+                <h3 className="text-sm uppercase tracking-wider font-semibold text-emerald-400">
+                  অ্যান্ড্রয়েড অ্যাপ মেকার ও বিল্ডার্স গাইড (Android WebView App)
+                </h3>
+              </div>
+              <span className="px-2.5 py-0.5 rounded text-[10px] bg-rose-500/10 text-rose-400 font-mono font-bold uppercase tracking-wider">
+                WebView Optimal Integration
+              </span>
+            </div>
+
+            <div className="text-slate-300 text-sm leading-relaxed flex flex-col gap-4">
+              <p>
+                আপনি যদি আপনার এই <strong>খেলাঘর লাইভ স্পোর্টস</strong> ওয়েবসাইটটিকে একটি এন্ড্রয়েড অ্যাপে রূপান্তর করতে চান, তবে নিচে দেওয়া কোড এবং নির্দেশনা ব্যবহার করে খুব সহজেই <strong>Android Studio Build</strong> সম্পন্ন করতে পারবেন।
+              </p>
+              
+              <div className="p-3 bg-amber-500/10 border border-amber-500/20 rounded-xl text-xs text-amber-300 flex flex-col gap-1.5 leading-normal">
+                <span className="font-extrabold flex items-center gap-1">⚠️ অতি গুরুত্বপূর্ণ তথ্য (M3U8 Streaming Support):</span>
+                <span>১. অ্যান্ড্রয়েড অ্যাপে লাইভ টিভি এবং স্পোর্টস স্ট্রিম সচল রাখতে <strong>Hardware Acceleration</strong> অবশ্যই ইনেবল রাখতে হবে।</span>
+                <span>২. কিছু সোর্স m3u8 স্ট্রিম লিঙ্ক <code>http://</code> (নন-সিকিউরড) হতে পারে। এগুলো অ্যাপে সাপোর্ট করার জন্য <strong>android:usesCleartextTraffic="true"</strong> সেট করা বাধ্যতামূলক।</span>
+                <span>৩. নিচের কোডে আপনার লাইভ সাইটের ইউআরএল সরাসরি বসানো আছে। আপনি চাইলে জাভা ফাইল খোলার পর কাস্টমাইজ করতে পারেন।</span>
+              </div>
+            </div>
+
+            {/* Step-by-Step Instructions */}
+            <div className="flex flex-col gap-6 mt-2">
+              
+              {/* Step 1: AndroidManifest.xml */}
+              <div className="flex flex-col gap-2">
+                <div className="flex items-center gap-2">
+                  <span className="w-6 h-6 rounded-full bg-emerald-500 text-slate-950 flex items-center justify-center font-bold text-xs">১</span>
+                  <h4 className="text-sm font-bold text-white">AndroidManifest.xml ফাইল সেটআপ করুন</h4>
+                </div>
+                <p className="text-xs text-slate-400 ml-8">আপনার এন্ড্রয়েড প্রজেক্টের <code>app/src/main/AndroidManifest.xml</code> ফাইলে ইন্টারনেট পারমিশন এবং Hardware Acceleration ইনেবল করতে নিচের পুরো কোডটি রিপ্লেস অথবা আপডেট করুন:</p>
+                
+                <div className="ml-8 relative">
+                  <textarea
+                    readOnly
+                    rows={8}
+                    value={`<?xml version="1.0" encoding="utf-8"?>
+<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+    package="your.package.name">
+
+    <!-- ইন্টারনেট এবং নেটওয়ার্ক স্ট্যাটাস পারমিশন -->
+    <uses-permission android:name="android.permission.INTERNET" />
+    <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
+    <uses-permission android:name="android.permission.MODIFY_AUDIO_SETTINGS" />
+
+    <application
+        android:allowBackup="true"
+        android:icon="@mipmap/ic_launcher"
+        android:label="@string/app_name"
+        android:roundIcon="@mipmap/ic_launcher_round"
+        android:supportsRtl="true"
+        android:theme="@style/Theme.AppCompat.NoActionBar"
+        android:hardwareAccelerated="true"
+        android:usesCleartextTraffic="true"> <!-- HTTP স্ট্রিম চালাতে এটি ১০০% আবশ্যক -->
+        
+        <activity
+            android:name=".MainActivity"
+            android:configChanges="orientation|screenSize|keyboardHidden"
+            android:exported="true">
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+                <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+        </activity>
+    </application>
+
+</manifest>`}
+                    className="w-full p-3 rounded-lg bg-zinc-950 border border-white/10 text-xs text-sky-300 font-mono focus:outline-none"
+                  />
+                </div>
+              </div>
+
+              {/* Step 2: MainActivity.java implementation with robust settings */}
+              <div className="flex flex-col gap-2">
+                <div className="flex items-center gap-2">
+                  <span className="w-6 h-6 rounded-full bg-emerald-500 text-slate-950 flex items-center justify-center font-bold text-xs">২</span>
+                  <h4 className="text-sm font-bold text-white">MainActivity.java কোডটি ব্যবহার করুন (জাভা)</h4>
+                </div>
+                <p className="text-xs text-slate-400 ml-8">আপনার প্রজেক্টের <code>MainActivity.java</code> ফাইলে সম্পূর্ণ কোডটি পেস্ট করুন। এটিতে ভিডিও বাফারিং, ফুল-স্ক্রিন হ্যার্ডওয়্যার এক্সিলারেশন, এবং সুরক্ষিত/অসুরচিত CORSPolicy ওভাররাইড কনফিগার করা আছে যা ভিডিও স্ট্রিমিং নিশ্চিত করবে:</p>
+                
+                <div className="ml-8 relative">
+                  <textarea
+                    readOnly
+                    rows={12}
+                    value={`package your.package.name;
+
+import android.annotation.SuppressLint;
+import android.os.Build;
+import android.os.Bundle;
+import android.view.View;
+import android.view.WindowManager;
+import android.webkit.WebChromeClient;
+import android.webkit.WebSettings;
+import android.webkit.WebView;
+import android.webkit.WebViewClient;
+import androidx.appcompat.app.AppCompatActivity;
+
+public class MainActivity extends AppCompatActivity {
+
+    private WebView myWebView;
+    private static final String APP_URL = "https://ais-pre-pb3pto4ut6ct6haobfizpg-881805001058.asia-east1.run.app";
+
+    @SuppressLint("SetJavaScriptEnabled")
+    @Override
+    protected void onCreate(Bundle savedInstanceState) {
+        super.onCreate(savedInstanceState);
+        setContentView(R.layout.activity_main);
+
+        // ফুল স্ক্রিন মোড সেটআপ
+        getWindow().setFlags(
+            WindowManager.LayoutParams.FLAG_LAYOUT_NO_LIMITS,
+            WindowManager.LayoutParams.FLAG_LAYOUT_NO_LIMITS
+        );
+
+        myWebView = findViewById(R.id.webview);
+        WebSettings webSettings = myWebView.getSettings();
+
+        // অতি গুরুত্বপূর্ণ WebView কনফিগারেশন সমূহ
+        webSettings.setJavaScriptEnabled(true); // জাভাস্ক্রিপ্ট সচল করুন
+        webSettings.setDomStorageEnabled(true); // লোকাল ডাটাবেজ/ড্রয়ার সচল রাখুন
+        webSettings.setLoadWithOverviewMode(true);
+        webSettings.setUseWideViewPort(true);
+        
+        // মিডিয়া প্লেব্যাক ও অটো প্লেব্যাক সমর্থন
+        webSettings.setMediaPlaybackRequiresUserGesture(false);
+
+        // HTTP এবং HTTPS মিক্সড কন্টেন্ট (m3u8 URLs) লোড করার অনুমতি
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
+            webSettings.setMixedContentMode(WebSettings.MIXED_CONTENT_ALWAYS_ALLOW);
+        }
+
+        // ব্রাউজার ইউজার এজেন্টকে অপ্টিমাইজ করুন
+        String userAgent = webSettings.getUserAgentString();
+        webSettings.setUserAgentString(userAgent + " KhelaghorAndroidApp/1.0");
+
+        myWebView.setWebViewClient(new WebViewClient() {
+            @Override
+            public boolean shouldOverrideUrlLoading(WebView view, String url) {
+                // অভ্যন্তরীণভাবে পেজ লোড সচল রাখতে
+                view.loadUrl(url);
+                return true;
+            }
+        });
+
+        // ফুলস্ক্রিন ভিডিও প্লে ব্যাক সাপোর্ট করার জন্য WebChromeClient
+        myWebView.setWebChromeClient(new WebChromeClient());
+
+        // সাইট লোড করুন
+        myWebView.loadUrl(APP_URL);
+    }
+
+    @Override
+    public void onBackPressed() {
+        if (myWebView.canGoBack()) {
+            myWebView.goBack();
+        } else {
+            super.onBackPressed();
+        }
+    }
+}`}
+                    className="w-full p-3 rounded-lg bg-zinc-950 border border-white/10 text-xs text-emerald-300 font-mono focus:outline-none"
+                  />
+                </div>
+              </div>
+
+              {/* Step 3: XML Layout file activity_main.xml */}
+              <div className="flex flex-col gap-2">
+                <div className="flex items-center gap-2">
+                  <span className="w-6 h-6 rounded-full bg-emerald-500 text-slate-950 flex items-center justify-center font-bold text-xs">৩</span>
+                  <h4 className="text-sm font-bold text-white">Layout ফাইলটি সেট করুন (activity_main.xml)</h4>
+                </div>
+                <p className="text-xs text-slate-400 ml-8">আপনার প্রজেক্টের <code>app/src/main/res/layout/activity_main.xml</code> ফাইলটিতে নিচের ভিউ কোডটি পেস্ট করুন:</p>
+                
+                <div className="ml-8 relative">
+                  <textarea
+                    readOnly
+                    rows={6}
+                    value={`<?xml version="1.0" encoding="utf-8"?>
+<RelativeLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="#09090b"> <!-- কসমিক ডার্ক ব্যাকগ্রাউন্ড -->
+
+    <WebView
+        android:id="@+id/webview"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:layout_alignParentStart="true"
+        android:layout_alignParentTop="true" />
+
+</RelativeLayout>`}
+                    className="w-full p-3 rounded-lg bg-zinc-950 border border-white/10 text-xs text-sky-400 font-mono focus:outline-none"
+                  />
+                </div>
+              </div>
+
+              {/* Pro Tips Section */}
+              <div className="ml-8 p-4 bg-emerald-500/5 rounded-xl border border-emerald-500/10 flex flex-col gap-2">
+                <span className="text-xs font-bold text-emerald-400 flex items-center gap-1">💡 সফলভাবে অ্যাপ তৈরি করার ট্রিকস:</span>
+                <ul className="text-xs text-slate-400 list-disc pl-4 flex flex-col gap-1.5 leading-relaxed font-sans">
+                  <li><strong>Gradle Sync:</strong> সবকিছু করার পর অ্যান্ড্রয়েড স্টুডিওর <code>File - Sync Project with Gradle Files</code> এ ক্লিক করুন।</li>
+                  <li><strong>Build APK:</strong> মেনু থেকে <code>Build - Build Bundle(s) / APK(s) - Build APK(s)</code> এ সিলেক্ট করলেই আপনার সচল অ্যান্ড্রয়েড অ্যাপের <strong>.apk</strong> ফাইলটি জেনারেট হয়ে যাবে যা আপনি যেকাউকে ফাইল বা টেলিগ্রামের মাধ্যমে শেয়ার করে ইন্সটল করতে পারবেন।</li>
+                  <li><strong>AdBlock & Popup:</strong> আমাদের এই ওয়েবসাইট কোডে যে Adsterra Popunder Ad সিস্টেম ইন্নিগ্রেট করা আছে, সেটি অ্যাপে সচল থাকবে এবং আপনার অ্যাপ থেকে ভালো রেভিনিউ জেনারেট হবে।</li>
+                </ul>
+              </div>
+
+            </div>
+          </div>
         )}
 
       </div>
