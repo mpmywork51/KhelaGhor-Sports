@@ -1,0 +1,10 @@
+<resources>
+    <!-- Base application theme. -->
+    <style name="Theme.KhelaGhor" parent="Theme.AppCompat.NoActionBar">
+        <!-- Customize your theme here. -->
+        <item name="colorPrimary">#10b981</item> <!-- Emerald green -->
+        <item name="colorPrimaryDark">#09090b</item> <!-- Dark zinc -->
+        <item name="colorAccent">#10b981</item>
+        <item name="android:windowBackground">#09090b</item> <!-- Matches website background -->
+    </style>
+</resources>
