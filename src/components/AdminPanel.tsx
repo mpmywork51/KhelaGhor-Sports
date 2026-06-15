@@ -25,8 +25,10 @@ import { Match, UpcomingMatch, Channel, GlobalSettings, SportCategory } from '..
 import { 
   addMatch, 
   deleteMatch, 
+  updateMatch,
   addUpcomingMatch, 
   deleteUpcomingMatch, 
+  updateUpcomingMatch,
   addChannel, 
   deleteChannel, 
   updateChannel,
@@ -69,6 +71,7 @@ export default function AdminPanel({
   const [server3Url, setServer3Url] = useState('');
   const [server4Url, setServer4Url] = useState('');
   const [competition, setCompetition] = useState('');
+  const [liveSerial, setLiveSerial] = useState('999');
 
   // Scheduled Match Fields
   const [upCat, setUpCat] = useState<SportCategory>('cricket');
@@ -78,8 +81,11 @@ export default function AdminPanel({
   const [upTeam2Logo, setUpTeam2Logo] = useState('');
   const [upServer1, setUpServer1] = useState('');
   const [upServer2, setUpServer2] = useState('');
+  const [upServer3, setUpServer3] = useState('');
+  const [upServer4, setUpServer4] = useState('');
   const [upComp, setUpComp] = useState('');
   const [scheduledDateTime, setScheduledDateTime] = useState('');
+  const [upSerial, setUpSerial] = useState('999');
 
   // IPTV Fields
   const [channelName, setChannelName] = useState('');
@@ -88,6 +94,7 @@ export default function AdminPanel({
   const [channelStream2, setChannelStream2] = useState('');
   const [channelCategory, setChannelCategory] = useState('বাংলাদেশ স্পোর্টস');
   const [customCategory, setCustomCategory] = useState('');
+  const [channelSerial, setChannelSerial] = useState('999');
 
   // Ad Networks & Global Policy Settings Fields
   const [bannerAdEnabled, setBannerAdEnabled] = useState(currentSettings.bannerAdEnabled);
@@ -142,7 +149,8 @@ export default function AdminPanel({
         server3Url,
         server4Url,
         isLive: true,
-        competition
+        competition,
+        serial: liveSerial ? Number(liveSerial) : 999
       });
       triggerNotification('নতুন লাইভ ম্যাচ সফলভাবে যোগ হয়েছে!');
       // Reset
@@ -155,6 +163,7 @@ export default function AdminPanel({
       setServer3Url('');
       setServer4Url('');
       setCompetition('');
+      setLiveSerial('999');
     } catch (err: any) {
       triggerNotification('যোগ করতে সমস্যা হয়েছে: ' + err.message, 'error');
     }
@@ -183,8 +192,11 @@ export default function AdminPanel({
         team2Logo: upTeam2Logo,
         server1Url: upServer1,
         server2Url: upServer2,
+        server3Url: upServer3,
+        server4Url: upServer4,
         competition: upComp,
-        scheduledTime: scheduledTimeMs
+        scheduledTime: scheduledTimeMs,
+        serial: upSerial ? Number(upSerial) : 999
       });
       triggerNotification('আসন্ন ম্যাচ সফলভাবে সিডিউল করা হয়েছে!');
       setUpTeam1Name('');
@@ -193,8 +205,11 @@ export default function AdminPanel({
       setUpTeam2Logo('');
       setUpServer1('');
       setUpServer2('');
+      setUpServer3('');
+      setUpServer4('');
       setUpComp('');
       setScheduledDateTime('');
+      setUpSerial('999');
     } catch (err: any) {
       triggerNotification('সিডিউল করতে সমস্যা হয়েছে: ' + err.message, 'error');
     }
@@ -216,7 +231,8 @@ export default function AdminPanel({
         logoUrl: channelLogo,
         streamUrl1: channelStream1,
         streamUrl2: channelStream2,
-        category: finalCategory
+        category: finalCategory,
+        serial: channelSerial ? Number(channelSerial) : 999
       });
       triggerNotification('নতুন টিভি চ্যানেল সফলভাবে যোগ হয়েছে!');
       setChannelName('');
@@ -224,6 +240,7 @@ export default function AdminPanel({
       setChannelStream1('');
       setChannelStream2('');
       setCustomCategory('');
+      setChannelSerial('999');
     } catch (err: any) {
       triggerNotification('চ্যানেল যোগ করতে ত্রুটি হয়েছে: ' + err.message, 'error');
     }
@@ -236,6 +253,7 @@ export default function AdminPanel({
   const [editChStream1, setEditChStream1] = useState('');
   const [editChStream2, setEditChStream2] = useState('');
   const [editChCategory, setEditChCategory] = useState('বাংলাদেশ স্পোর্টস');
+  const [editChSerial, setEditChSerial] = useState('999');
 
   const startEditingChannel = (ch: Channel) => {
     setEditingChannel(ch);
@@ -244,6 +262,7 @@ export default function AdminPanel({
     setEditChStream1(ch.streamUrl1);
     setEditChStream2(ch.streamUrl2);
     setEditChCategory(ch.category || 'বাংলাদেশ স্পোর্টস');
+    setEditChSerial(ch.serial !== undefined ? ch.serial.toString() : '999');
   };
 
   const handleEditChannelSubmit = async (e: React.FormEvent) => {
@@ -259,12 +278,79 @@ export default function AdminPanel({
         logoUrl: editChLogo,
         streamUrl1: editChStream1,
         streamUrl2: editChStream2,
-        category: editChCategory
+        category: editChCategory,
+        serial: editChSerial ? Number(editChSerial) : 999
       });
       triggerNotification('টিভি চ্যানেল সফলভাবে আপডেট হয়েছে!');
       setEditingChannel(null);
     } catch (err: any) {
       triggerNotification('আপডেট করতে ত্রুটি হয়েছে: ' + err.message, 'error');
+    }
+  };
+
+  const handleMoveMatch = async (m: Match, direction: 'up' | 'down') => {
+    const currentSerial = m.serial !== undefined && m.serial !== null ? m.serial : 999;
+    const targetSerial = direction === 'up' ? Math.max(1, currentSerial - 1) : currentSerial + 1;
+    try {
+      await updateMatch(m.id, {
+        category: m.category,
+        team1Name: m.team1Name,
+        team1Logo: m.team1Logo,
+        team2Name: m.team2Name,
+        team2Logo: m.team2Logo,
+        server1Url: m.server1Url,
+        server2Url: m.server2Url,
+        server3Url: m.server3Url || '',
+        server4Url: m.server4Url || '',
+        isLive: m.isLive ?? true,
+        competition: m.competition || '',
+        serial: targetSerial
+      });
+      triggerNotification('ম্যাচের সিরিয়াল পরিবর্তন করা হয়েছে!');
+    } catch (err: any) {
+      triggerNotification('সিরিয়াল পরিবর্তন করতে সমস্যা হয়েছে: ' + err.message, 'error');
+    }
+  };
+
+  const handleMoveUpcomingMatch = async (um: UpcomingMatch, direction: 'up' | 'down') => {
+    const currentSerial = um.serial !== undefined && um.serial !== null ? um.serial : 999;
+    const targetSerial = direction === 'up' ? Math.max(1, currentSerial - 1) : currentSerial + 1;
+    try {
+      await updateUpcomingMatch(um.id, {
+        category: um.category,
+        team1Name: um.team1Name,
+        team1Logo: um.team1Logo,
+        team2Name: um.team2Name,
+        team2Logo: um.team2Logo,
+        server1Url: um.server1Url,
+        server2Url: um.server2Url,
+        server3Url: um.server3Url || '',
+        server4Url: um.server4Url || '',
+        competition: um.competition || '',
+        scheduledTime: um.scheduledTime,
+        serial: targetSerial
+      });
+      triggerNotification('আসন্ন ম্যাচের সিরিয়াল পরিবর্তন করা হয়েছে!');
+    } catch (err: any) {
+      triggerNotification('সিরিয়াল পরিবর্তন করতে সমস্যা হয়েছে: ' + err.message, 'error');
+    }
+  };
+
+  const handleMoveChannel = async (ch: Channel, direction: 'up' | 'down') => {
+    const currentSerial = ch.serial !== undefined && ch.serial !== null ? ch.serial : 999;
+    const targetSerial = direction === 'up' ? Math.max(1, currentSerial - 1) : currentSerial + 1;
+    try {
+      await updateChannel(ch.id, {
+        name: ch.name,
+        logoUrl: ch.logoUrl,
+        streamUrl1: ch.streamUrl1,
+        streamUrl2: ch.streamUrl2,
+        category: ch.category || 'বাংলাদেশ স্পোর্টস',
+        serial: targetSerial
+      });
+      triggerNotification('চ্যানেলের সিরিয়াল পরিবর্তন করা হয়েছে!');
+    } catch (err: any) {
+      triggerNotification('সিরিয়াল পরিবর্তন করতে সমস্যা হয়েছে: ' + err.message, 'error');
     }
   };
 
@@ -543,6 +629,18 @@ export default function AdminPanel({
                     className="w-full px-3 py-2 text-sm bg-black/40 rounded-lg border border-white/10 text-white placeholder-slate-500 focus:outline-none focus:border-emerald-500 transition font-mono text-xs"
                   />
                 </div>
+
+                <div className="flex flex-col gap-1">
+                  <label className="text-xs text-slate-400">ক্রমিক নম্বর / পজিশন (১ হলে সবার উপরে থাকবে)</label>
+                  <input
+                    type="number"
+                    min="1"
+                    placeholder="উদা: ১, ২, ৩ ... (ডিফল্ট: ৯৯৯)"
+                    value={liveSerial}
+                    onChange={(e) => setLiveSerial(e.target.value)}
+                    className="w-full px-3 py-2 text-sm bg-black/40 rounded-lg border border-white/10 text-white placeholder-slate-500 focus:outline-none focus:border-emerald-500 transition font-sans"
+                  />
+                </div>
               </div>
 
               <button
@@ -575,20 +673,45 @@ export default function AdminPanel({
                         <div className="flex items-center gap-2">
                           <span className="w-2 h-2 rounded-full bg-rose-500 animate-pulse" />
                           <span className="font-bold uppercase text-white tracking-tight">{m.team1Name} VS {m.team2Name}</span>
+                          {m.serial !== undefined && m.serial !== 999 && (
+                            <span className="px-1.5 py-0.5 rounded bg-emerald-500/10 text-emerald-400 text-[10px] font-bold border border-emerald-500/20">সিরিয়াল: {m.serial}</span>
+                          )}
                         </div>
                         <span className="text-slate-400 font-medium text-xs">
                           ক্যাটাগরি: {m.category === 'cricket' ? 'ক্রিকেট' : m.category === 'football' ? 'ফুটবল' : 'অন্যান্য'} | কম্পিটিশন: {m.competition || 'N/A'}
                         </span>
                       </div>
 
-                      {/* One-click Finish Match Button */}
-                      <button
-                        onClick={() => deleteMatch(m.id)}
-                        className="p-2 bg-rose-500/10 hover:bg-rose-500/20 hover:text-rose-400 rounded-lg border border-rose-500/20 transition duration-200"
-                        title="Finish Match"
-                      >
-                        <Trash2 size={16} />
-                      </button>
+                      <div className="flex items-center gap-1.5 shrink-0">
+                        <div className="flex items-center bg-black/30 rounded border border-white/5 overflow-hidden">
+                          <button
+                            type="button"
+                            onClick={() => handleMoveMatch(m, 'up')}
+                            className="p-1.5 px-2.5 hover:bg-white/10 text-slate-300 hover:text-white transition text-xs font-bold"
+                            title="উপরে নিন"
+                          >
+                            ▲
+                          </button>
+                          <div className="w-[1px] h-4 bg-white/5" />
+                          <button
+                            type="button"
+                            onClick={() => handleMoveMatch(m, 'down')}
+                            className="p-1.5 px-2.5 hover:bg-white/10 text-slate-300 hover:text-white transition text-xs font-bold"
+                            title="নিচে নামান"
+                          >
+                            ▼
+                          </button>
+                        </div>
+
+                        <button
+                          type="button"
+                          onClick={() => deleteMatch(m.id)}
+                          className="p-2 bg-rose-500/10 hover:bg-rose-500/20 hover:text-rose-400 rounded-lg border border-rose-500/20 transition duration-200"
+                          title="Finish Match"
+                        >
+                          <Trash2 size={16} />
+                        </button>
+                      </div>
                     </div>
                   ))}
                 </div>
@@ -700,14 +823,40 @@ export default function AdminPanel({
                     placeholder="স্ট্রিম ১"
                     value={upServer1}
                     onChange={(e) => setUpServer1(e.target.value)}
-                    className="w-full px-2.5 py-1.5 text-xs bg-black/40 rounded-lg border border-white/5 text-slate-305 focus:outline-none focus:border-emerald-500 font-sans"
+                    className="w-full px-2.5 py-1.5 text-xs bg-black/40 rounded-lg border border-white/5 text-slate-300 focus:outline-none focus:border-emerald-500 font-sans"
                   />
                   <input
                     type="url"
                     placeholder="স্ট্রিম ২"
                     value={upServer2}
                     onChange={(e) => setUpServer2(e.target.value)}
-                    className="w-full px-2.5 py-1.5 text-xs bg-black/40 rounded-lg border border-white/5 text-slate-305 focus:outline-none focus:border-emerald-500 font-sans"
+                    className="w-full px-2.5 py-1.5 text-xs bg-black/40 rounded-lg border border-white/5 text-slate-300 focus:outline-none focus:border-emerald-500 font-sans"
+                  />
+                  <input
+                    type="url"
+                    placeholder="স্ট্রিম ৩ (ঐচ্ছিক)"
+                    value={upServer3}
+                    onChange={(e) => setUpServer3(e.target.value)}
+                    className="w-full px-2.5 py-1.5 text-xs bg-black/40 rounded-lg border border-white/5 text-slate-300 focus:outline-none focus:border-emerald-500 font-sans"
+                  />
+                  <input
+                    type="url"
+                    placeholder="স্ট্রিম ৪ (ঐচ্ছিক)"
+                    value={upServer4}
+                    onChange={(e) => setUpServer4(e.target.value)}
+                    className="w-full px-2.5 py-1.5 text-xs bg-black/40 rounded-lg border border-white/5 text-slate-300 focus:outline-none focus:border-emerald-500 font-sans"
+                  />
+                </div>
+
+                <div className="flex flex-col gap-1 mt-1">
+                  <label className="text-xs text-slate-400">ক্রমিক নম্বর / পজিশন (১ হলে সবার উপরে থাকবে)</label>
+                  <input
+                    type="number"
+                    min="1"
+                    placeholder="উদা: ১, ২, ৩ ... (ডিফল্ট: ৯৯৯)"
+                    value={upSerial}
+                    onChange={(e) => setUpSerial(e.target.value)}
+                    className="w-full px-3 py-2 text-sm bg-black/40 rounded-lg border border-white/10 text-white placeholder-slate-500 focus:outline-none focus:border-emerald-500 transition font-sans"
                   />
                 </div>
               </div>
@@ -739,18 +888,46 @@ export default function AdminPanel({
                       className="p-3 bg-zinc-950/40 rounded-xl border border-white/5 flex items-center justify-between font-sans text-sm hover:border-emerald-500/20 transition"
                     >
                       <div className="flex flex-col gap-1">
-                        <span className="font-extrabold uppercase text-white tracking-tight">{um.team1Name} VS {um.team2Name}</span>
+                        <div className="flex items-center gap-2">
+                          <span className="font-extrabold uppercase text-white tracking-tight">{um.team1Name} VS {um.team2Name}</span>
+                          {um.serial !== undefined && um.serial !== 999 && (
+                            <span className="px-1.5 py-0.5 rounded bg-emerald-500/10 text-emerald-400 text-[10px] font-bold border border-emerald-500/20">সিরিয়াল: {um.serial}</span>
+                          )}
+                        </div>
                         <span className="text-slate-400 text-xs font-medium">
                           সময়: {new Date(um.scheduledTime).toLocaleString('bn-BD')} | {um.competition || 'N/A'}
                         </span>
                       </div>
 
-                      <button
-                        onClick={() => deleteUpcomingMatch(um.id)}
-                        className="p-2 bg-rose-500/10 hover:bg-rose-500/20 hover:text-rose-400 rounded-lg border border-rose-500/20 transition"
-                      >
-                        <Trash2 size={16} />
-                      </button>
+                      <div className="flex items-center gap-1.5 shrink-0">
+                        <div className="flex items-center bg-black/30 rounded border border-white/5 overflow-hidden">
+                          <button
+                            type="button"
+                            onClick={() => handleMoveUpcomingMatch(um, 'up')}
+                            className="p-1.5 px-2.5 hover:bg-white/10 text-slate-300 hover:text-white transition text-xs font-bold"
+                            title="উপরে নিন"
+                          >
+                            ▲
+                          </button>
+                          <div className="w-[1px] h-4 bg-white/5" />
+                          <button
+                            type="button"
+                            onClick={() => handleMoveUpcomingMatch(um, 'down')}
+                            className="p-1.5 px-2.5 hover:bg-white/10 text-slate-300 hover:text-white transition text-xs font-bold"
+                            title="নিচে নামান"
+                          >
+                            ▼
+                          </button>
+                        </div>
+
+                        <button
+                          type="button"
+                          onClick={() => deleteUpcomingMatch(um.id)}
+                          className="p-2 bg-rose-500/10 hover:bg-rose-500/20 hover:text-rose-400 rounded-lg border border-rose-500/20 transition duration-200"
+                        >
+                          <Trash2 size={16} />
+                        </button>
+                      </div>
                     </div>
                   ))}
                 </div>
@@ -853,6 +1030,18 @@ export default function AdminPanel({
                 </div>
               </div>
 
+              <div className="flex flex-col gap-1.5">
+                <label className="text-xs text-slate-400">ক্রমিক নম্বর / পজিশন (১ হলে সবার উপরে থাকবে)</label>
+                <input
+                  type="number"
+                  min="1"
+                  placeholder="উদা: ১, ২, ৩ ... (ডিফল্ট: ৯৯৯)"
+                  value={channelSerial}
+                  onChange={(e) => setChannelSerial(e.target.value)}
+                  className="w-full px-3 py-2 text-sm bg-black/40 rounded-lg border border-white/10 text-white placeholder-slate-500 focus:outline-none focus:border-emerald-500 transition font-sans"
+                />
+              </div>
+
               <button
                 type="submit"
                 className="w-full mt-2 py-2.5 bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-sans font-bold text-sm rounded-xl active:scale-95 transition"
@@ -879,20 +1068,46 @@ export default function AdminPanel({
                       key={ch.id} 
                       className="p-3 bg-zinc-950/40 rounded-xl border border-white/5 flex items-center justify-between font-sans text-sm hover:border-emerald-500/20 transition"
                     >
-                      <div className="flex items-center gap-3">
+                      <div className="flex items-center gap-3 overflow-hidden">
                         {ch.logoUrl && (
-                          <div className="w-8 h-8 rounded bg-zinc-900 border border-white/5 flex items-center justify-center p-1 overflow-hidden">
+                          <div className="w-8 h-8 rounded bg-zinc-900 border border-white/5 flex items-center justify-center p-1 overflow-hidden shrink-0">
                             <img src={ch.logoUrl} alt={ch.name} referrerPolicy="no-referrer" className="w-full h-full object-contain" />
                           </div>
                         )}
-                        <div className="flex flex-col">
-                          <span className="font-extrabold text-white tracking-tight">{ch.name}</span>
-                          <span className="text-[10px] text-emerald-400 font-bold tracking-wider">{ch.category || 'বাংলাদেশ স্পোর্টস'}</span>
+                        <div className="flex flex-col overflow-hidden">
+                          <div className="flex items-center gap-1.5">
+                            <span className="font-extrabold text-white tracking-tight truncate">{ch.name}</span>
+                            {ch.serial !== undefined && ch.serial !== 999 && (
+                              <span className="px-1 py-0.5 rounded bg-emerald-500/10 text-emerald-400 text-[10px] font-bold border border-emerald-500/20 shrink-0">P-{ch.serial}</span>
+                            )}
+                          </div>
+                          <span className="text-[10px] text-emerald-400 font-bold tracking-wider truncate">{ch.category || 'বাংলাদেশ স্পোর্টস'}</span>
                         </div>
                       </div>
 
-                      <div className="flex items-center gap-1.5">
+                      <div className="flex items-center gap-1.5 shrink-0">
+                        <div className="flex items-center bg-black/30 rounded border border-white/5 overflow-hidden">
+                          <button
+                            type="button"
+                            onClick={() => handleMoveChannel(ch, 'up')}
+                            className="p-1.5 px-2.5 hover:bg-white/10 text-slate-300 hover:text-white transition text-xs font-bold"
+                            title="উপরে নিন"
+                          >
+                            ▲
+                          </button>
+                          <div className="w-[1px] h-4 bg-white/5" />
+                          <button
+                            type="button"
+                            onClick={() => handleMoveChannel(ch, 'down')}
+                            className="p-1.5 px-2.5 hover:bg-white/10 text-slate-300 hover:text-white transition text-xs font-bold"
+                            title="নিচে নামান"
+                          >
+                            ▼
+                          </button>
+                        </div>
+
                         <button
+                          type="button"
                           onClick={() => startEditingChannel(ch)}
                           className="p-2 bg-emerald-500/10 hover:bg-emerald-500/20 hover:text-emerald-400 rounded-lg border border-emerald-500/20 transition"
                           title="চ্যানেল পরিবর্তন করুন"
@@ -900,6 +1115,7 @@ export default function AdminPanel({
                           <Pencil size={15} />
                         </button>
                         <button
+                          type="button"
                           onClick={() => deleteChannel(ch.id)}
                           className="p-2 bg-rose-500/10 hover:bg-rose-500/20 hover:text-rose-400 rounded-lg border border-rose-500/20 transition"
                         >
@@ -979,12 +1195,23 @@ export default function AdminPanel({
                     </div>
 
                     <div className="flex flex-col gap-1">
-                      <label className="text-xs text-slate-400">সার্ভার ২ স্ট্রিম লিঙ্ক (ঐচ্ছিক ব্যাকআপ)</label>
+                      <label className="text-xs text-slate-400">সার্ভার ২ 스트িম লিঙ্ক (ঐচ্ছিক ব্যাকআপ)</label>
                       <input
                         type="url"
                         value={editChStream2}
                         onChange={(e) => setEditChStream2(e.target.value)}
                         className="w-full px-3 py-2 text-xs bg-black/45 rounded-lg border border-white/10 text-white placeholder-slate-600 focus:outline-none focus:border-emerald-500 transition font-mono"
+                      />
+                    </div>
+
+                    <div className="flex flex-col gap-1">
+                      <label className="text-xs text-slate-400">ক্রমিক নম্বর / পজিশন (১ হলে সবার উপরে থাকবে)</label>
+                      <input
+                        type="number"
+                        min="1"
+                        value={editChSerial}
+                        onChange={(e) => setEditChSerial(e.target.value)}
+                        className="w-full px-3 py-2 text-xs bg-black/45 rounded-lg border border-white/10 text-white placeholder-slate-600 focus:outline-none focus:border-emerald-500 transition font-sans"
                       />
                     </div>
 

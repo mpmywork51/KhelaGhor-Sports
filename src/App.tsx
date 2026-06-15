@@ -164,11 +164,19 @@ export default function App() {
         team2Logo: um.team2Logo,
         server1Url: um.server1Url,
         server2Url: um.server2Url,
+        server3Url: um.server3Url || '',
+        server4Url: um.server4Url || '',
         isLive: true,
         competition: um.competition,
-        createdAt: Date.now()
+        createdAt: Date.now(),
+        serial: um.serial
       };
-      setMatches(prev => [newlyLive, ...prev]);
+      setMatches(prev => [newlyLive, ...prev].sort((a, b) => {
+        const sA = a.serial !== undefined && a.serial !== null ? a.serial : 999;
+        const sB = b.serial !== undefined && b.serial !== null ? b.serial : 999;
+        if (sA !== sB) return sA - sB;
+        return b.createdAt - a.createdAt;
+      }));
     }
   };
 

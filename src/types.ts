@@ -14,6 +14,7 @@ export interface Match {
   isLive: boolean;
   competition: string;
   createdAt: number;
+  serial?: number;
 }
 
 export interface UpcomingMatch {
@@ -30,6 +31,7 @@ export interface UpcomingMatch {
   competition: string;
   scheduledTime: number; // millisecond timestamp
   createdAt: number;
+  serial?: number;
 }
 
 export interface Channel {
@@ -40,6 +42,7 @@ export interface Channel {
   streamUrl2: string;
   category?: string;
   createdAt: number;
+  serial?: number;
 }
 
 export interface GlobalSettings {

@@ -81,16 +81,35 @@ export function subscribeToMatches(callback: (matches: Match[]) => void) {
           server4Url: data.server4Url || '',
           isLive: data.isLive ?? true,
           competition: data.competition || '',
-          createdAt: data.createdAt || Date.now()
+          createdAt: data.createdAt || Date.now(),
+          serial: data.serial !== undefined && data.serial !== null ? Number(data.serial) : 999
         });
       });
-      callback(list);
+      // Sort client-side by serial asc, then by createdAt desc
+      const sorted = [...list].sort((a, b) => {
+        const serialA = a.serial !== undefined && a.serial !== null ? a.serial : 999;
+        const serialB = b.serial !== undefined && b.serial !== null ? b.serial : 999;
+        if (serialA !== serialB) {
+          return serialA - serialB;
+        }
+        return b.createdAt - a.createdAt;
+      });
+      callback(sorted);
     }, (error) => {
       handleFirestoreError(error, OperationType.LIST, 'matches');
     });
   } else {
     const handler = () => {
-      callback(getLocalData<Match[]>(LOCAL_STORAGE_KEY_MATCHES, []));
+      const list = getLocalData<Match[]>(LOCAL_STORAGE_KEY_MATCHES, []);
+      const sorted = [...list].sort((a, b) => {
+        const serialA = a.serial !== undefined && a.serial !== null ? a.serial : 999;
+        const serialB = b.serial !== undefined && b.serial !== null ? b.serial : 999;
+        if (serialA !== serialB) {
+          return serialA - serialB;
+        }
+        return b.createdAt - a.createdAt;
+      });
+      callback(sorted);
     };
     window.addEventListener('livekhela_local_update', handler);
     handler(); // initial trigger
@@ -118,16 +137,35 @@ export function subscribeToUpcoming(callback: (upcoming: UpcomingMatch[]) => voi
           server4Url: data.server4Url || '',
           competition: data.competition || '',
           scheduledTime: data.scheduledTime || Date.now(),
-          createdAt: data.createdAt || Date.now()
+          createdAt: data.createdAt || Date.now(),
+          serial: data.serial !== undefined && data.serial !== null ? Number(data.serial) : 999
         });
       });
-      callback(list);
+      // Sort client-side by serial asc, then by scheduledTime asc
+      const sorted = [...list].sort((a, b) => {
+        const serialA = a.serial !== undefined && a.serial !== null ? a.serial : 999;
+        const serialB = b.serial !== undefined && b.serial !== null ? b.serial : 999;
+        if (serialA !== serialB) {
+          return serialA - serialB;
+        }
+        return a.scheduledTime - b.scheduledTime;
+      });
+      callback(sorted);
     }, (error) => {
       handleFirestoreError(error, OperationType.LIST, 'upcoming');
     });
   } else {
     const handler = () => {
-      callback(getLocalData<UpcomingMatch[]>(LOCAL_STORAGE_KEY_UPCOMING, []));
+      const list = getLocalData<UpcomingMatch[]>(LOCAL_STORAGE_KEY_UPCOMING, []);
+      const sorted = [...list].sort((a, b) => {
+        const serialA = a.serial !== undefined && a.serial !== null ? a.serial : 999;
+        const serialB = b.serial !== undefined && b.serial !== null ? b.serial : 999;
+        if (serialA !== serialB) {
+          return serialA - serialB;
+        }
+        return a.scheduledTime - b.scheduledTime;
+      });
+      callback(sorted);
     };
     window.addEventListener('livekhela_local_update', handler);
     handler(); // initial trigger
@@ -149,16 +187,35 @@ export function subscribeToChannels(callback: (channels: Channel[]) => void) {
           streamUrl1: data.streamUrl1 || '',
           streamUrl2: data.streamUrl2 || '',
           category: data.category || 'বাংলাদেশ স্পোর্টস',
-          createdAt: data.createdAt || Date.now()
+          createdAt: data.createdAt || Date.now(),
+          serial: data.serial !== undefined && data.serial !== null ? Number(data.serial) : 999
         });
       });
-      callback(list);
+      // Sort client-side by serial asc, then by createdAt desc
+      const sorted = [...list].sort((a, b) => {
+        const serialA = a.serial !== undefined && a.serial !== null ? a.serial : 999;
+        const serialB = b.serial !== undefined && b.serial !== null ? b.serial : 999;
+        if (serialA !== serialB) {
+          return serialA - serialB;
+        }
+        return b.createdAt - a.createdAt;
+      });
+      callback(sorted);
     }, (error) => {
       handleFirestoreError(error, OperationType.LIST, 'channels');
     });
   } else {
     const handler = () => {
-      callback(getLocalData<Channel[]>(LOCAL_STORAGE_KEY_CHANNELS, []));
+      const list = getLocalData<Channel[]>(LOCAL_STORAGE_KEY_CHANNELS, []);
+      const sorted = [...list].sort((a, b) => {
+        const serialA = a.serial !== undefined && a.serial !== null ? a.serial : 999;
+        const serialB = b.serial !== undefined && b.serial !== null ? b.serial : 999;
+        if (serialA !== serialB) {
+          return serialA - serialB;
+        }
+        return b.createdAt - a.createdAt;
+      });
+      callback(sorted);
     };
     window.addEventListener('livekhela_local_update', handler);
     handler(); // initial trigger
@@ -280,6 +337,7 @@ export async function addMatch(m: Omit<Match, 'id' | 'createdAt'>) {
     try {
       await addDoc(collection(db, 'matches'), {
         ...m,
+        serial: m.serial !== undefined && m.serial !== null ? Number(m.serial) : 999,
         createdAt: Date.now()
       });
     } catch (e) {
@@ -290,6 +348,7 @@ export async function addMatch(m: Omit<Match, 'id' | 'createdAt'>) {
     const newMatch: Match = {
       ...m,
       id: 'match_' + Date.now().toString(36),
+      serial: m.serial !== undefined && m.serial !== null ? Number(m.serial) : 999,
       createdAt: Date.now()
     };
     setLocalData(LOCAL_STORAGE_KEY_MATCHES, [newMatch, ...list]);
@@ -315,6 +374,7 @@ export async function addUpcomingMatch(um: Omit<UpcomingMatch, 'id' | 'createdAt
     try {
       await addDoc(collection(db, 'upcoming'), {
         ...um,
+        serial: um.serial !== undefined && um.serial !== null ? Number(um.serial) : 999,
         createdAt: Date.now()
       });
     } catch (e) {
@@ -325,6 +385,7 @@ export async function addUpcomingMatch(um: Omit<UpcomingMatch, 'id' | 'createdAt
     const newUM: UpcomingMatch = {
       ...um,
       id: 'upcoming_' + Date.now().toString(36),
+      serial: um.serial !== undefined && um.serial !== null ? Number(um.serial) : 999,
       createdAt: Date.now()
     };
     setLocalData(LOCAL_STORAGE_KEY_UPCOMING, [...list, newUM]);
@@ -370,6 +431,7 @@ export async function addChannel(ch: Omit<Channel, 'id' | 'createdAt'>) {
     try {
       await addDoc(collection(db, 'channels'), {
         ...ch,
+        serial: ch.serial !== undefined && ch.serial !== null ? Number(ch.serial) : 999,
         createdAt: Date.now()
       });
     } catch (e) {
@@ -380,6 +442,7 @@ export async function addChannel(ch: Omit<Channel, 'id' | 'createdAt'>) {
     const newCh: Channel = {
       ...ch,
       id: 'channel_' + Date.now().toString(36),
+      serial: ch.serial !== undefined && ch.serial !== null ? Number(ch.serial) : 999,
       createdAt: Date.now()
     };
     setLocalData(LOCAL_STORAGE_KEY_CHANNELS, [newCh, ...list]);
@@ -403,14 +466,47 @@ export async function updateChannel(id: string, ch: Omit<Channel, 'id' | 'create
   if (isFirebaseConfigured && db) {
     try {
       await updateDoc(doc(db, 'channels', id), {
-        ...ch
+        ...ch,
+        serial: ch.serial !== undefined && ch.serial !== null ? Number(ch.serial) : 999
       });
     } catch (e) {
       handleFirestoreError(e, OperationType.WRITE, `channels/${id}`);
     }
   } else {
     const list = getLocalData<Channel[]>(LOCAL_STORAGE_KEY_CHANNELS, []);
-    setLocalData(LOCAL_STORAGE_KEY_CHANNELS, list.map(item => item.id === id ? { ...item, ...ch } : item));
+    setLocalData(LOCAL_STORAGE_KEY_CHANNELS, list.map(item => item.id === id ? { ...item, ...ch, serial: ch.serial !== undefined && ch.serial !== null ? Number(ch.serial) : 999 } : item));
+  }
+}
+
+export async function updateMatch(id: string, m: Omit<Match, 'id' | 'createdAt'>) {
+  if (isFirebaseConfigured && db) {
+    try {
+      await updateDoc(doc(db, 'matches', id), {
+        ...m,
+        serial: m.serial !== undefined && m.serial !== null ? Number(m.serial) : 999
+      });
+    } catch (e) {
+      handleFirestoreError(e, OperationType.WRITE, `matches/${id}`);
+    }
+  } else {
+    const list = getLocalData<Match[]>(LOCAL_STORAGE_KEY_MATCHES, []);
+    setLocalData(LOCAL_STORAGE_KEY_MATCHES, list.map(item => item.id === id ? { ...item, ...m, serial: m.serial !== undefined && m.serial !== null ? Number(m.serial) : 999 } : item));
+  }
+}
+
+export async function updateUpcomingMatch(id: string, um: Omit<UpcomingMatch, 'id' | 'createdAt'>) {
+  if (isFirebaseConfigured && db) {
+    try {
+      await updateDoc(doc(db, 'upcoming', id), {
+        ...um,
+        serial: um.serial !== undefined && um.serial !== null ? Number(um.serial) : 999
+      });
+    } catch (e) {
+      handleFirestoreError(e, OperationType.WRITE, `upcoming/${id}`);
+    }
+  } else {
+    const list = getLocalData<UpcomingMatch[]>(LOCAL_STORAGE_KEY_UPCOMING, []);
+    setLocalData(LOCAL_STORAGE_KEY_UPCOMING, list.map(item => item.id === id ? { ...item, ...um, serial: um.serial !== undefined && um.serial !== null ? Number(um.serial) : 999 } : item));
   }
 }
 
