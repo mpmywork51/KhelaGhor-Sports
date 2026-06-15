@@ -15,7 +15,11 @@ import {
   Code,
   Chrome,
   Pencil,
-  Smartphone
+  Smartphone,
+  Users,
+  Activity,
+  Wifi,
+  WifiOff
 } from 'lucide-react';
 import { Match, UpcomingMatch, Channel, GlobalSettings, SportCategory } from '../types';
 import { 
@@ -28,7 +32,10 @@ import {
   updateChannel,
   saveGlobalSettings,
   logoutUser,
-  AUTHORIZED_ADMIN
+  AUTHORIZED_ADMIN,
+  subscribeToActiveSessions,
+  purgeStaleSessions,
+  ActiveSession
 } from '../lib/store';
 import { isFirebaseConfigured } from '../lib/firebase';
 
@@ -40,7 +47,7 @@ interface AdminPanelProps {
   onClose: () => void;
 }
 
-type AdminSubTab = 'live-matches' | 'scheduled' | 'iptv-channels' | 'ads-settings' | 'android-build';
+type AdminSubTab = 'live-matches' | 'scheduled' | 'iptv-channels' | 'ads-settings' | 'realtime-analytics';
 
 export default function AdminPanel({ 
   currentSettings, 
@@ -99,6 +106,21 @@ export default function AdminPanel({
     setNotification({ message, type });
     setTimeout(() => setNotification(null), 4000);
   };
+
+  // Real-time visitor list tracking state
+  const [sessions, setSessions] = useState<ActiveSession[]>([]);
+
+  // Cleanup/listen routine hook
+  React.useEffect(() => {
+    if (activeSubTab === 'realtime-analytics') {
+      const unsub = subscribeToActiveSessions((list) => {
+        setSessions(list);
+      });
+      // Invoke stale session sweep periodically
+      purgeStaleSessions();
+      return () => unsub();
+    }
+  }, [activeSubTab]);
 
   // Submit Matches
   const handleAddLiveMatch = async (e: React.FormEvent) => {
@@ -269,7 +291,7 @@ export default function AdminPanel({
 
   return (
     <div 
-      id="khelaghor_admin_dashboard"
+      id="livekhela_admin_dashboard"
       className="w-full bg-zinc-900 border border-emerald-500/20 rounded-2xl p-4 sm:p-6 backdrop-blur-2xl text-white select-none relative overflow-hidden shadow-2xl"
     >
       {/* Visual back-lights */}
@@ -284,7 +306,7 @@ export default function AdminPanel({
           </div>
           <div>
             <h2 className="text-lg sm:text-xl font-sans tracking-tight font-black flex items-center gap-1.5 uppercase text-white">
-              খেলাঘর অ্যাডমিন প্যানেল 
+              লাইভখেলা অ্যাডমিন প্যানেল 
             </h2>
             <p className="text-slate-400 text-xs font-sans mt-0.5">
                সহজেই লাইভ ম্যাচ, বিজ্ঞাপন ও সিস্টেম কনফিগারেশন নিয়ন্ত্রণ করুন
@@ -375,15 +397,15 @@ export default function AdminPanel({
         </button>
 
         <button
-          onClick={() => setActiveSubTab('android-build')}
+          onClick={() => setActiveSubTab('realtime-analytics')}
           className={`px-4 py-2 text-xs sm:text-sm font-sans font-medium rounded-lg whitespace-nowrap transition flex items-center gap-1.5 ${
-            activeSubTab === 'android-build' 
+            activeSubTab === 'realtime-analytics' 
               ? 'bg-emerald-500 text-slate-950 font-bold' 
               : 'text-slate-400 hover:text-white hover:bg-white/5'
           }`}
         >
-          <Smartphone size={14} />
-          <span className="text-rose-400 font-extrabold font-sans">অ্যান্ড্রয়েড অ্যাপ বিল্ডার 📱</span>
+          <Activity size={14} className={activeSubTab === 'realtime-analytics' ? 'animate-pulse text-slate-950' : 'text-emerald-400'} />
+          <span className="font-sans font-bold flex items-center gap-1">রিয়েল-টাইম ইউজার 🟢</span>
         </button>
       </div>
 
@@ -1083,7 +1105,7 @@ export default function AdminPanel({
                 <label className="text-xs text-slate-400">স্বাগতম নোটিশের শিরোনাম</label>
                 <input
                   type="text"
-                  placeholder="খেলাঘর-এ স্বাগতম"
+                  placeholder="লাইভখেলা-য় স্বাগতম"
                   value={welcomeTitle}
                   onChange={(e) => setWelcomeTitle(e.target.value)}
                   className="w-full px-3 py-2 text-sm bg-black/40 rounded-lg border border-white/10 text-white placeholder-slate-500 focus:outline-none focus:border-emerald-500 transition"
@@ -1134,222 +1156,192 @@ export default function AdminPanel({
           </form>
         )}
 
-        {/* TAB 5: Android Build Assistant */}
-        {activeSubTab === 'android-build' && (
-          <div className="bg-black/20 border border-white/5 p-4 sm:p-6 rounded-xl flex flex-col gap-6 font-sans">
-            <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 border-b border-white/5 pb-4">
-              <div className="flex items-center gap-2">
-                <Smartphone className="text-emerald-400" size={20} />
-                <h3 className="text-sm uppercase tracking-wider font-semibold text-emerald-400">
-                  অ্যান্ড্রয়েড অ্যাপ মেকার ও বিল্ডার্স গাইড (Android WebView App)
-                </h3>
+        {/* TAB 5: Real-time traffic analytics and session tracker */}
+        {activeSubTab === 'realtime-analytics' && (
+          <div className="flex flex-col gap-6 font-sans">
+            {/* Header / Summary */}
+            <div className="bg-slate-900/40 border border-white/5 p-5 rounded-2xl flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-4 animate-fade-in">
+              <div className="flex items-center gap-3">
+                <div className="p-3 bg-emerald-500/10 rounded-xl">
+                  <Activity className="text-emerald-400 animate-pulse" size={24} />
+                </div>
+                <div>
+                  <h3 className="text-base sm:text-lg font-extrabold text-white">রিয়েল-টাইম ভিজিটর ট্র্যাকার ও অ্যানালিটিক্স</h3>
+                  <p className="text-xs text-slate-400">আপনার ওয়েবসাইট এবং অ্যান্ড্রয়েড অ্যাপের লাইভ ট্রাফিক পর্যবেক্ষণ করুন</p>
+                </div>
               </div>
-              <span className="px-2.5 py-0.5 rounded text-[10px] bg-rose-500/10 text-rose-400 font-mono font-bold uppercase tracking-wider">
-                WebView Optimal Integration
-              </span>
+              <button
+                onClick={async () => {
+                  try {
+                    await purgeStaleSessions();
+                    triggerNotification('অফলাইন নিষ্ক্রিয় ডেটা সেশন সফলভাবে পরিষ্কার করা হয়েছে!');
+                  } catch (e) {
+                    triggerNotification('পরিষ্কার করতে ব্যর্থ হয়েছে', 'error');
+                  }
+                }}
+                className="px-4 py-2 border border-white/10 hover:border-emerald-500/30 text-slate-300 hover:text-emerald-400 font-medium text-xs rounded-xl hover:bg-emerald-500/5 transition self-start sm:self-center"
+              >
+                নিষ্ক্রিয় ডেটা পরিষ্কার করুন
+              </button>
             </div>
-
-            <div className="text-slate-300 text-sm leading-relaxed flex flex-col gap-4">
-              <p>
-                আপনি যদি আপনার এই <strong>খেলাঘর লাইভ স্পোর্টস</strong> ওয়েবসাইটটিকে একটি এন্ড্রয়েড অ্যাপে রূপান্তর করতে চান, তবে নিচে দেওয়া কোড এবং নির্দেশনা ব্যবহার করে খুব সহজেই <strong>Android Studio Build</strong> সম্পন্ন করতে পারবেন।
-              </p>
+            {/* Quick Stat Cards */}
+            {(() => {
+              const now = Date.now();
+              const onlineTimeout = 65000; // 65 seconds
+              const activeList = sessions.filter(s => now - s.lastActive <= onlineTimeout);
+              const offlineList = sessions.filter(s => now - s.lastActive > onlineTimeout && now - s.lastActive <= 900000); // 15 mins
               
-              <div className="p-3 bg-amber-500/10 border border-amber-500/20 rounded-xl text-xs text-amber-300 flex flex-col gap-1.5 leading-normal">
-                <span className="font-extrabold flex items-center gap-1">⚠️ অতি গুরুত্বপূর্ণ তথ্য (M3U8 Streaming Support):</span>
-                <span>১. অ্যান্ড্রয়েড অ্যাপে লাইভ টিভি এবং স্পোর্টস স্ট্রিম সচল রাখতে <strong>Hardware Acceleration</strong> অবশ্যই ইনেবল রাখতে হবে।</span>
-                <span>২. কিছু সোর্স m3u8 স্ট্রিম লিঙ্ক <code>http://</code> (নন-সিকিউরড) হতে পারে। এগুলো অ্যাপে সাপোর্ট করার জন্য <strong>android:usesCleartextTraffic="true"</strong> সেট করা বাধ্যতামূলক।</span>
-                <span>৩. নিচের কোডে আপনার লাইভ সাইটের ইউআরএল সরাসরি বসানো আছে। আপনি চাইলে জাভা ফাইল খোলার পর কাস্টমাইজ করতে পারেন।</span>
-              </div>
-            </div>
+              const androidOnline = activeList.filter(s => s.platform === 'Android App').length;
+              const webOnline = activeList.filter(s => s.platform === 'Website Browser').length;
+              const totalOnline = activeList.length;
+              const totalOfflineRecent = offlineList.length;
 
-            {/* Step-by-Step Instructions */}
-            <div className="flex flex-col gap-6 mt-2">
-              
-              {/* Step 1: AndroidManifest.xml */}
-              <div className="flex flex-col gap-2">
-                <div className="flex items-center gap-2">
-                  <span className="w-6 h-6 rounded-full bg-emerald-500 text-slate-950 flex items-center justify-center font-bold text-xs">১</span>
-                  <h4 className="text-sm font-bold text-white">AndroidManifest.xml ফাইল সেটআপ করুন</h4>
-                </div>
-                <p className="text-xs text-slate-400 ml-8">আপনার এন্ড্রয়েড প্রজেক্টের <code>app/src/main/AndroidManifest.xml</code> ফাইলে ইন্টারনেট পারমিশন এবং Hardware Acceleration ইনেবল করতে নিচের পুরো কোডটি রিপ্লেস অথবা আপডেট করুন:</p>
-                
-                <div className="ml-8 relative">
-                  <textarea
-                    readOnly
-                    rows={8}
-                    value={`<?xml version="1.0" encoding="utf-8"?>
-<manifest xmlns:android="http://schemas.android.com/apk/res/android"
-    package="your.package.name">
+              return (
+                <>
+                  <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 animate-fade-in">
+                    {/* Card 1: Total Online */}
+                    <div className="bg-black/20 border border-white/5 p-4 sm:p-5 rounded-xl flex flex-col gap-2 relative overflow-hidden group hover:border-emerald-500/20 transition duration-300">
+                      <div className="flex items-center justify-between">
+                        <span className="text-xs font-bold text-slate-400">অনলাইন ইউজার</span>
+                        <span className="relative flex h-2 w-2">
+                          <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+                          <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
+                        </span>
+                      </div>
+                      <div className="flex items-baseline gap-1.5 mt-1">
+                        <span className="text-2xl sm:text-3xl font-extrabold text-emerald-400 font-mono tracking-tight">{totalOnline}</span>
+                        <span className="text-[10px] text-slate-400">জন সক্রিয়</span>
+                      </div>
+                      <div className="text-[10px] text-slate-500 mt-1 flex items-center gap-1 font-sans">
+                        <Users size={10} />
+                        <span>লাইভ সেকেন্ড ট্র্যাকিং</span>
+                      </div>
+                    </div>
 
-    <!-- ইন্টারনেট এবং নেটওয়ার্ক স্ট্যাটাস পারমিশন -->
-    <uses-permission android:name="android.permission.INTERNET" />
-    <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
-    <uses-permission android:name="android.permission.MODIFY_AUDIO_SETTINGS" />
+                    {/* Card 2: Android Users */}
+                    <div className="bg-black/20 border border-white/5 p-4 sm:p-5 rounded-xl flex flex-col gap-2 relative overflow-hidden group hover:border-emerald-500/20 transition duration-300">
+                      <div className="flex items-center justify-between font-sans">
+                        <span className="text-xs font-bold text-slate-400">অ্যাপ্লিকেশন ইউজার (Android)</span>
+                        <Smartphone size={14} className="text-emerald-400" />
+                      </div>
+                      <div className="flex items-baseline gap-1.5 mt-1 font-sans">
+                        <span className="text-2xl sm:text-3xl font-extrabold text-white font-mono tracking-tight">{androidOnline}</span>
+                        <span className="text-[10px] text-slate-400">জন সচল</span>
+                      </div>
+                      <div className="text-[10px] text-slate-500 mt-1 flex items-center gap-1 font-sans">
+                        <Wifi size={10} className="text-emerald-400/80" />
+                        <span>অ্যান্ড্রয়েড অ্যাপ থেকে দেখতেছে</span>
+                      </div>
+                    </div>
 
-    <application
-        android:allowBackup="true"
-        android:icon="@mipmap/ic_launcher"
-        android:label="@string/app_name"
-        android:roundIcon="@mipmap/ic_launcher_round"
-        android:supportsRtl="true"
-        android:theme="@style/Theme.AppCompat.NoActionBar"
-        android:hardwareAccelerated="true"
-        android:usesCleartextTraffic="true"> <!-- HTTP স্ট্রিম চালাতে এটি ১০০% আবশ্যক -->
-        
-        <activity
-            android:name=".MainActivity"
-            android:configChanges="orientation|screenSize|keyboardHidden"
-            android:exported="true">
-            <intent-filter>
-                <action android:name="android.intent.action.MAIN" />
-                <category android:name="android.intent.category.LAUNCHER" />
-            </intent-filter>
-        </activity>
-    </application>
+                    {/* Card 3: Browser Users */}
+                    <div className="bg-black/20 border border-white/5 p-4 sm:p-5 rounded-xl flex flex-col gap-2 relative overflow-hidden group hover:border-emerald-500/20 transition duration-300">
+                      <div className="flex items-center justify-between font-sans">
+                        <span className="text-xs font-bold text-slate-400">মোবাইল ও পিসি ব্রাউজার</span>
+                        <Chrome size={14} className="text-emerald-400" />
+                      </div>
+                      <div className="flex items-baseline gap-1.5 mt-1 font-sans">
+                        <span className="text-2xl sm:text-3xl font-extrabold text-white font-mono tracking-tight">{webOnline}</span>
+                        <span className="text-[10px] text-slate-400">জন ভিজিটর</span>
+                      </div>
+                      <div className="text-[10px] text-slate-500 mt-1 flex items-center gap-1 font-sans">
+                        <Globe size={10} className="text-teal-400/80" />
+                        <span>সরাসরি ওয়েবসাইট ব্রাউজার</span>
+                      </div>
+                    </div>
 
-</manifest>`}
-                    className="w-full p-3 rounded-lg bg-zinc-950 border border-white/10 text-xs text-sky-300 font-mono focus:outline-none"
-                  />
-                </div>
-              </div>
+                    {/* Card 4: Offline Users */}
+                    <div className="bg-black/20 border border-white/5 p-4 sm:p-5 rounded-xl flex flex-col gap-2 relative overflow-hidden group hover:border-emerald-500/20 transition duration-300">
+                      <div className="flex items-center justify-between font-sans">
+                        <span className="text-xs font-bold text-slate-400">অফলাইন (শেষ ১৫ মিনিট)</span>
+                        <WifiOff size={14} className="text-slate-500" />
+                      </div>
+                      <div className="flex items-baseline gap-1.5 mt-1 font-sans">
+                        <span className="text-2xl sm:text-3xl font-extrabold text-slate-400 font-mono tracking-tight">{totalOfflineRecent}</span>
+                        <span className="text-[10px] text-slate-500">জন প্রস্থান</span>
+                      </div>
+                      <div className="text-[10px] text-slate-500 mt-1 flex items-center gap-1 font-sans">
+                        <Info size={10} />
+                        <span>পৃষ্ঠা পরিবর্তন বা চলে গেছে</span>
+                      </div>
+                    </div>
+                  </div>
 
-              {/* Step 2: MainActivity.java implementation with robust settings */}
-              <div className="flex flex-col gap-2">
-                <div className="flex items-center gap-2">
-                  <span className="w-6 h-6 rounded-full bg-emerald-500 text-slate-950 flex items-center justify-center font-bold text-xs">২</span>
-                  <h4 className="text-sm font-bold text-white">MainActivity.java কোডটি ব্যবহার করুন (জাভা)</h4>
-                </div>
-                <p className="text-xs text-slate-400 ml-8">আপনার প্রজেক্টের <code>MainActivity.java</code> ফাইলে সম্পূর্ণ কোডটি পেস্ট করুন। এটিতে ভিডিও বাফারিং, ফুল-স্ক্রিন হ্যার্ডওয়্যার এক্সিলারেশন, এবং সুরক্ষিত/অসুরচিত CORSPolicy ওভাররাইড কনফিগার করা আছে যা ভিডিও স্ট্রিমিং নিশ্চিত করবে:</p>
-                
-                <div className="ml-8 relative">
-                  <textarea
-                    readOnly
-                    rows={12}
-                    value={`package your.package.name;
+                  {/* Active Visitors detailed table/list */}
+                  <div className="bg-black/20 border border-white/5 p-5 rounded-xl flex flex-col gap-4">
+                    <div className="flex items-center justify-between border-b border-white/5 pb-3 font-sans">
+                      <span className="text-sm font-extrabold text-white flex items-center gap-2">
+                        <Users size={16} className="text-emerald-400" />
+                        <span>সক্রিয় ব্যবহারকারীদের তালিকা ({activeList.length})</span>
+                      </span>
+                      <span className="text-[10px] text-slate-400 italic font-mono">রিয়েল-টাইম লাইভ আপডেট হচ্ছে...</span>
+                    </div>
 
-import android.annotation.SuppressLint;
-import android.os.Build;
-import android.os.Bundle;
-import android.view.View;
-import android.view.WindowManager;
-import android.webkit.WebChromeClient;
-import android.webkit.WebSettings;
-import android.webkit.WebView;
-import android.webkit.WebViewClient;
-import androidx.appcompat.app.AppCompatActivity;
+                    {activeList.length === 0 ? (
+                      <div className="py-12 text-center text-slate-500 text-sm font-sans flex flex-col items-center justify-center gap-2">
+                        <Activity className="text-white/10 animate-pulse" size={48} />
+                        <span>বর্তমানে কোনো সক্রিয় ইউজার সেশন ডাটাবেজে রেকর্ড নেই।</span>
+                      </div>
+                    ) : (
+                      <div className="overflow-x-auto">
+                        <table className="w-full text-left text-sm text-slate-300 font-sans border-collapse">
+                          <thead>
+                            <tr className="border-b border-white/5 text-slate-400 text-xs font-bold font-mono tracking-wider">
+                              <th className="py-2.5 px-3 text-left">সেশন টোকেন আইডি</th>
+                              <th className="py-2.5 px-2 text-left">ডিভাইস প্ল্যাটফর্ম</th>
+                              <th className="py-2.5 px-2 text-right">শেষ সক্রিয় উপস্থিতি</th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {activeList.map((session, index) => {
+                              const timeDiff = Math.max(0, Math.floor((now - session.lastActive) / 1000));
+                              let liveStatus = '১ সেকেন্ড আগে';
+                              if (timeDiff > 1) {
+                                liveStatus = `${timeDiff} সেকেন্ড আগে`;
+                              }
 
-public class MainActivity extends AppCompatActivity {
-
-    private WebView myWebView;
-    private static final String APP_URL = "https://ais-pre-pb3pto4ut6ct6haobfizpg-881805001058.asia-east1.run.app";
-
-    @SuppressLint("SetJavaScriptEnabled")
-    @Override
-    protected void onCreate(Bundle savedInstanceState) {
-        super.onCreate(savedInstanceState);
-        setContentView(R.layout.activity_main);
-
-        // ফুল স্ক্রিন মোড সেটআপ
-        getWindow().setFlags(
-            WindowManager.LayoutParams.FLAG_LAYOUT_NO_LIMITS,
-            WindowManager.LayoutParams.FLAG_LAYOUT_NO_LIMITS
-        );
-
-        myWebView = findViewById(R.id.webview);
-        WebSettings webSettings = myWebView.getSettings();
-
-        // অতি গুরুত্বপূর্ণ WebView কনফিগারেশন সমূহ
-        webSettings.setJavaScriptEnabled(true); // জাভাস্ক্রিপ্ট সচল করুন
-        webSettings.setDomStorageEnabled(true); // লোকাল ডাটাবেজ/ড্রয়ার সচল রাখুন
-        webSettings.setLoadWithOverviewMode(true);
-        webSettings.setUseWideViewPort(true);
-        
-        // মিডিয়া প্লেব্যাক ও অটো প্লেব্যাক সমর্থন
-        webSettings.setMediaPlaybackRequiresUserGesture(false);
-
-        // HTTP এবং HTTPS মিক্সড কন্টেন্ট (m3u8 URLs) লোড করার অনুমতি
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
-            webSettings.setMixedContentMode(WebSettings.MIXED_CONTENT_ALWAYS_ALLOW);
-        }
-
-        // ব্রাউজার ইউজার এজেন্টকে অপ্টিমাইজ করুন
-        String userAgent = webSettings.getUserAgentString();
-        webSettings.setUserAgentString(userAgent + " KhelaghorAndroidApp/1.0");
-
-        myWebView.setWebViewClient(new WebViewClient() {
-            @Override
-            public boolean shouldOverrideUrlLoading(WebView view, String url) {
-                // অভ্যন্তরীণভাবে পেজ লোড সচল রাখতে
-                view.loadUrl(url);
-                return true;
-            }
-        });
-
-        // ফুলস্ক্রিন ভিডিও প্লে ব্যাক সাপোর্ট করার জন্য WebChromeClient
-        myWebView.setWebChromeClient(new WebChromeClient());
-
-        // সাইট লোড করুন
-        myWebView.loadUrl(APP_URL);
-    }
-
-    @Override
-    public void onBackPressed() {
-        if (myWebView.canGoBack()) {
-            myWebView.goBack();
-        } else {
-            super.onBackPressed();
-        }
-    }
-}`}
-                    className="w-full p-3 rounded-lg bg-zinc-950 border border-white/10 text-xs text-emerald-300 font-mono focus:outline-none"
-                  />
-                </div>
-              </div>
-
-              {/* Step 3: XML Layout file activity_main.xml */}
-              <div className="flex flex-col gap-2">
-                <div className="flex items-center gap-2">
-                  <span className="w-6 h-6 rounded-full bg-emerald-500 text-slate-950 flex items-center justify-center font-bold text-xs">৩</span>
-                  <h4 className="text-sm font-bold text-white">Layout ফাইলটি সেট করুন (activity_main.xml)</h4>
-                </div>
-                <p className="text-xs text-slate-400 ml-8">আপনার প্রজেক্টের <code>app/src/main/res/layout/activity_main.xml</code> ফাইলটিতে নিচের ভিউ কোডটি পেস্ট করুন:</p>
-                
-                <div className="ml-8 relative">
-                  <textarea
-                    readOnly
-                    rows={6}
-                    value={`<?xml version="1.0" encoding="utf-8"?>
-<RelativeLayout xmlns:android="http://schemas.android.com/apk/res/android"
-    android:layout_width="match_parent"
-    android:layout_height="match_parent"
-    android:background="#09090b"> <!-- কসমিক ডার্ক ব্যাকগ্রাউন্ড -->
-
-    <WebView
-        android:id="@+id/webview"
-        android:layout_width="match_parent"
-        android:layout_height="match_parent"
-        android:layout_alignParentStart="true"
-        android:layout_alignParentTop="true" />
-
-</RelativeLayout>`}
-                    className="w-full p-3 rounded-lg bg-zinc-950 border border-white/10 text-xs text-sky-400 font-mono focus:outline-none"
-                  />
-                </div>
-              </div>
-
-              {/* Pro Tips Section */}
-              <div className="ml-8 p-4 bg-emerald-500/5 rounded-xl border border-emerald-500/10 flex flex-col gap-2">
-                <span className="text-xs font-bold text-emerald-400 flex items-center gap-1">💡 সফলভাবে অ্যাপ তৈরি করার ট্রিকস:</span>
-                <ul className="text-xs text-slate-400 list-disc pl-4 flex flex-col gap-1.5 leading-relaxed font-sans">
-                  <li><strong>Gradle Sync:</strong> সবকিছু করার পর অ্যান্ড্রয়েড স্টুডিওর <code>File - Sync Project with Gradle Files</code> এ ক্লিক করুন।</li>
-                  <li><strong>Build APK:</strong> মেনু থেকে <code>Build - Build Bundle(s) / APK(s) - Build APK(s)</code> এ সিলেক্ট করলেই আপনার সচল অ্যান্ড্রয়েড অ্যাপের <strong>.apk</strong> ফাইলটি জেনারেট হয়ে যাবে যা আপনি যেকাউকে ফাইল বা টেলিগ্রামের মাধ্যমে শেয়ার করে ইন্সটল করতে পারবেন।</li>
-                  <li><strong>AdBlock & Popup:</strong> আমাদের এই ওয়েবসাইট কোডে যে Adsterra Popunder Ad সিস্টেম ইন্নিগ্রেট করা আছে, সেটি অ্যাপে সচল থাকবে এবং আপনার অ্যাপ থেকে ভালো রেভিনিউ জেনারেট হবে।</li>
-                </ul>
-              </div>
-
-            </div>
+                              return (
+                                <tr key={session.id} className="border-b border-white/5 hover:bg-white/5 transition-colors">
+                                  <td className="py-3 px-3 font-mono text-xs text-sky-400 flex items-center gap-2">
+                                    <span className="text-slate-500 select-none">{index + 1}.</span>
+                                    <span>{session.id.startsWith('mock_session') ? `🧬 ${session.id}` : `🔒 ${session.id.substring(0, 24)}...`}</span>
+                                  </td>
+                                  <td className="py-3 px-2">
+                                    {session.platform === 'Android App' ? (
+                                      <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[10px] font-extrabold bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
+                                        <Smartphone size={10} />
+                                        <span>অ্যান্ড্রয়েড অ্যাপ</span>
+                                      </span>
+                                    ) : (
+                                      <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[10px] font-extrabold bg-blue-500/10 text-sky-400 border border-blue-500/20">
+                                        <Globe size={10} />
+                                        <span>ওয়েবসাইট ব্রাউজার</span>
+                                      </span>
+                                    )}
+                                  </td>
+                                  <td className="py-3 px-2 text-right font-mono text-xs text-emerald-400 font-extrabold">
+                                    <span className="inline-block w-2 h-2 rounded-full bg-emerald-500 animate-pulse mr-1.5"></span>
+                                    {liveStatus}
+                                  </td>
+                                </tr>
+                              );
+                            })}
+                          </tbody>
+                        </table>
+                      </div>
+                    )}
+                  </div>
+                </>
+              );
+            })()}
           </div>
         )}
+
+
+
+
+
+
 
       </div>
     </div>

@@ -55,13 +55,13 @@ export default function WelcomeModal({ isOpen, onClose, welcomeTitle, welcomeMes
 
           {/* Translated Title */}
           <h2 className="text-xl sm:text-2xl font-sans tracking-tight font-extrabold text-white mb-3">
-            {welcomeTitle || 'খেলাঘর-এ স্বাগতম'}
+            {welcomeTitle || 'লাইভখেলা-য় স্বাগতম'}
           </h2>
 
           {/* Customizable welcome text */}
           <div className="text-slate-300 font-sans text-sm sm:text-base leading-relaxed mb-6 px-1">
             <p className="whitespace-pre-wrap">
-              {welcomeMessage || 'আপনাকে স্বাগতম আমাদের খেলাঘর ওয়েবসাইটে! লাইভ খেলা দেখতে আমাদের সাথেই থাকুন।'}
+              {welcomeMessage || 'আপনাকে স্বাগতম আমাদের লাইভখেলা ওয়েবসাইটে! লাইভ খেলা দেখতে আমাদের সাথেই থাকুন।'}
             </p>
           </div>
 
@@ -79,7 +79,7 @@ export default function WelcomeModal({ isOpen, onClose, welcomeTitle, welcomeMes
             {/* Button 2: Telegram redirect */}
             <a
               id="welcome_modal_telegram_btn"
-              href={telegramUrl || 'https://t.me/khelaghor_official'}
+              href={telegramUrl || 'https://t.me/livekhela_official'}
               target="_blank"
               rel="noopener noreferrer"
               onClick={onClose} // dismiss the modal on link click

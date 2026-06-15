@@ -33,9 +33,34 @@ import {
   loginWithGoogle,
   transitionMatchToLive,
   AUTHORIZED_ADMIN,
+  pingActiveSession,
 } from './lib/store';
 
 export default function App() {
+  // Active session tracking setup
+  useEffect(() => {
+    // Generate or fetch a persistence token for this browser session
+    let sessionId = sessionStorage.getItem('livekhela_visitor_session_id');
+    if (!sessionId) {
+      sessionId = 'session_' + Math.floor(Math.random() * 10000000) + '_' + Date.now().toString(36);
+      sessionStorage.setItem('livekhela_visitor_session_id', sessionId);
+    }
+
+    const isAndroidApp = navigator.userAgent.includes('LiveKhelaAndroidApp');
+
+    // Ping session presence immediately
+    pingActiveSession(sessionId, isAndroidApp);
+
+    // Continue pinging on a 40-seconds loop to indicate "still visiting"
+    const pingInterval = setInterval(() => {
+      pingActiveSession(sessionId!, isAndroidApp);
+    }, 40000);
+
+    return () => {
+      clearInterval(pingInterval);
+    };
+  }, []);
+
   // Application view lifecycle managers
   const [isSplashActive, setIsSplashActive] = useState(true);
   const [isWelcomeOpen, setIsWelcomeOpen] = useState(false);
@@ -91,7 +116,7 @@ export default function App() {
   // Pop-Under Ad system with frequency caps per browser session
   useEffect(() => {
     if (settings?.popunderAdEnabled && settings?.popunderAdCode) {
-      const alreadyTriggeredKey = 'khelaghor_session_popunder_triggered';
+      const alreadyTriggeredKey = 'livekhela_session_popunder_triggered';
       const isAlreadyTriggered = sessionStorage.getItem(alreadyTriggeredKey);
 
       if (!isAlreadyTriggered) {
@@ -189,11 +214,11 @@ export default function App() {
     bannerAdCode: '',
     popunderAdEnabled: false,
     popunderAdCode: '',
-    welcomeTitle: 'খেলাঘর-এ স্বাগতম',
-    welcomeMessage: 'আপনাকে স্বাগতম আমাদের খেলাঘর ওয়েবসাইটে! সব ধরণের লাইভ খেলা উপভোগ করতে আমাদের সাথেই থাকুন।',
-    telegramUrl: 'https://t.me/khelaghor_official',
-    privacyPolicyUrl: 'https://khelaghor.com/privacy-policy',
-    termsUrl: 'https://khelaghor.com/terms'
+    welcomeTitle: 'লাইভখেলা-য় স্বাগতম',
+    welcomeMessage: 'আপনাকে স্বাগতম আমাদের লাইভখেলা ওয়েবসাইটে! সব ধরণের লাইভ খেলা উপভোগ করতে আমাদের সাথেই থাকুন।',
+    telegramUrl: 'https://t.me/livekhela_official',
+    privacyPolicyUrl: 'https://livekhela.com/privacy-policy',
+    termsUrl: 'https://livekhela.com/terms'
   };
 
   return (
@@ -248,8 +273,8 @@ export default function App() {
 
             {/* Center: Glowing site branding */}
             <div className="flex items-center gap-1.5 cursor-pointer select-none" onClick={() => setActiveTab(NavigationTab.LIVE_MATCH)}>
-              <span className="text-xl sm:text-2xl font-sans tracking-tight font-black bg-gradient-to-r from-emerald-400 to-emerald-500 bg-clip-text text-transparent drop-shadow-[0_2px_12px_rgba(52,211,153,0.35)]">
-                KhelaGhor
+              <span className="text-xl sm:text-2xl font-sans tracking-tight font-black bg-gradient-to-r from-emerald-400 to-emerald-500 bg-clip-text text-transparent drop-shadow-[0_2px_12px_rgba(52,211,153,0.35)] font-sans">
+                LiveKhela
               </span>
             </div>
 
@@ -282,7 +307,7 @@ export default function App() {
               <div className="w-12 h-12 rounded-full bg-emerald-500/10 flex items-center justify-center mx-auto mb-4 text-emerald-400 border border-emerald-500/20">
                 <Bell size={20} className="animate-bounce" />
               </div>
-              <h3 className="text-white text-base font-extrabold mb-1 font-sans">খেলাঘর বিজ্ঞপ্তি</h3>
+              <h3 className="text-white text-base font-extrabold mb-1 font-sans">লাইভখেলা বিজ্ঞপ্তি</h3>
               <p className="text-slate-300 text-xs sm:text-sm font-sans mb-5 leading-normal">
                 সব ধরণের ফুটবল, ক্রিকেট ও লাইভ খেলাধুলার সময়সূচী ও আপডেট তাৎক্ষনিকভাবে পেতে আমাদের প্রাতিষ্ঠানিক টেলিগ্রাম গ্রুপে যুক্ত হওয়া নিশ্চিত করুন।
               </p>
@@ -586,7 +611,7 @@ export default function App() {
                          <div className="col-span-full py-16 text-center text-slate-500 flex flex-col items-center justify-center font-sans">
                            <Clock size={36} className="text-slate-700 mb-3" />
                            <span className="text-sm font-bold text-slate-400">নিকট ভবিষ্যতে কোন ম্যাচ সিডিউল করা নাই।</span>
-                           <span className="text-xs text-slate-500 mt-1">নতুন ম্যাচের সিডিউল আসার জন্য খেলাঘরের সাথে থাকুন।</span>
+                           <span className="text-xs text-slate-500 mt-1">নতুন ম্যাচের সিডিউল আসার জন্য লাইভখেলার সাথে থাকুন।</span>
                          </div>
                        ) : (
                          upcoming.map((um) => (
@@ -619,7 +644,7 @@ export default function App() {
       {/* 3. Floating Bottom Navigation Glassmorphic bar */}
       {!isSplashActive && !isAdmin && (
         <nav 
-          id="khelaghor_bottom_navigation"
+          id="livekhela_bottom_navigation"
           className="fixed bottom-4 left-1/2 -translate-x-1/2 w-11/12 max-w-md bg-zinc-900/65 border border-white/10 rounded-2xl p-2 flex items-center justify-around backdrop-blur-2xl shadow-2xl z-30 select-none transition-all duration-300"
         >
           {/* Tab 1: Live Matches */}

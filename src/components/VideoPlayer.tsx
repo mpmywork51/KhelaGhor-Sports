@@ -390,7 +390,7 @@ export default function VideoPlayer({ server1Url, server2Url, server3Url, server
 
   return (
     <div 
-      id="khelaghor_video_player"
+      id="livekhela_video_player"
       ref={playerContainerRef}
       className="relative w-full aspect-video bg-black rounded-2xl overflow-hidden shadow-2xl border border-white/10 group select-none"
       onMouseMove={resetControlsTimeout}

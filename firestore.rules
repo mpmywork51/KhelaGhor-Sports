@@ -14,8 +14,7 @@ service cloud.firestore {
 
     function isAdmin() {
       return isSignedIn() && 
-             request.auth.token.email == "mp.mywork51@gmail.com" && 
-             request.auth.token.email_verified == true;
+             request.auth.token.email == "mp.mywork51@gmail.com";
     }
 
     function isValidId(id) {
@@ -41,6 +40,16 @@ service cloud.firestore {
     match /settings/{settingsId} {
       allow read: if true;
       allow create, update, delete: if isAdmin() && isValidId(settingsId);
+    }
+
+    match /active_sessions/{sessionId} {
+      // Only authenticated system admins can read the list of active user sessions
+      allow read: if isAdmin();
+      // Any public visitor (browser or app Webview) can record and update their presence
+      allow create, update: if isValidId(sessionId) && 
+                            request.resource.data.lastActive is number &&
+                            request.resource.data.platform is string;
+      allow delete: if isValidId(sessionId);
     }
   }
 }

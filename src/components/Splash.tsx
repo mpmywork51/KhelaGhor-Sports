@@ -22,7 +22,7 @@ export default function Splash({ onComplete }: SplashProps) {
     <AnimatePresence>
       {isVisible && (
         <motion.div
-          id="khelaghor_splash_screen"
+          id="livekhela_splash_screen"
           initial={{ opacity: 1 }}
           exit={{ opacity: 0 }}
           transition={{ duration: 0.5 }}
@@ -40,17 +40,17 @@ export default function Splash({ onComplete }: SplashProps) {
           >
             {/* Logo Icon with glass ring */}
             <div className="w-20 h-20 rounded-2xl bg-emerald-500/10 border border-emerald-500/30 flex items-center justify-center shadow-[0_0_40px_rgba(16,185,129,0.15)] mb-6 relative group overflow-hidden">
-              <div className="absolute inset-0 bg-gradient-to-tr from-emerald-500/20 to-transparent animate-pulse" />
+               <div className="absolute inset-0 bg-gradient-to-tr from-emerald-500/20 to-transparent animate-pulse" />
               <Tv className="w-10 h-10 text-emerald-400 drop-shadow-[0_0_8px_rgba(52,211,153,0.5)]" />
             </div>
 
             {/* Glowing Brand typography */}
             <h1 className="text-white text-4xl sm:text-5xl font-sans tracking-tight font-black text-center select-none flex flex-col gap-1.5 px-4">
               <span className="bg-gradient-to-r from-emerald-400 via-teal-300 to-emerald-500 bg-clip-text text-transparent drop-shadow-[0_2px_15px_rgba(52,211,153,0.3)] font-sans">
-                KhelaGhor
+                LiveKhela
               </span>
               <span className="text-xl sm:text-2xl text-emerald-400/80 font-medium tracking-wide">
-                খেলাঘর
+                লাইভখেলা
               </span>
             </h1>
 

@@ -116,7 +116,7 @@ export default function MatchCard({ match, onWatch }: MatchCardProps) {
       {/* Bottom Row within Card */}
       <div className="flex items-center justify-between pt-2 border-t border-white/5 relative z-10 gap-4 mt-2">
         <span className="text-slate-400 text-xs sm:text-sm font-sans font-medium truncate">
-          {match.competition || 'লাইভ খেলাঘর সম্প্রচার'}
+          {match.competition || 'লাইভখেলা সম্প্রচার'}
         </span>
 
         {/* Stream Play button */}

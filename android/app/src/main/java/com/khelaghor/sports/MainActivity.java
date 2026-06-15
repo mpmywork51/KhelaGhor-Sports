@@ -14,7 +14,7 @@ import androidx.appcompat.app.AppCompatActivity;
 public class MainActivity extends AppCompatActivity {
 
     private WebView myWebView;
-    private static final String APP_URL = "https://ais-pre-pb3pto4ut6ct6haobfizpg-881805001058.asia-east1.run.app";
+    private static final String APP_URL = "https://livekhela.site";
 
     @SuppressLint("SetJavaScriptEnabled")
     @Override
@@ -49,7 +49,8 @@ public class MainActivity extends AppCompatActivity {
         // 4. Override Custom User-Agent to act like standard Google Chrome on Android.
         // This is a CRITICAL setting: many premium sports providers (like tsports, asimxtech) block requests
         // containing "wv" or "Version/4.0" (WebView signatures) but allow clean Chrome mobile requests.
-        String chromeUA = "Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/114.0.0.0 Mobile Safari/537.36";
+        // We append KhelaghorAndroidApp/1.0 so our web telemetry can count users using the App specifically!
+        String chromeUA = "Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/114.0.0.0 Mobile Safari/537.36 KhelaghorAndroidApp/1.0";
         webSettings.setUserAgentString(chromeUA);
 
         // Keep navigation inside WebView

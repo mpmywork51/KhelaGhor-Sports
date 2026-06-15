@@ -49,6 +49,17 @@
       },
       "required": ["name", "logoUrl", "streamUrl1"]
     },
+    "ActiveSession": {
+      "title": "ActiveSession",
+      "description": "An active website session for real-time tracking",
+      "type": "object",
+      "properties": {
+        "lastActive": { "type": "number" },
+        "platform": { "type": "string", "enum": ["Android App", "Website Browser"] },
+        "userAgent": { "type": "string" }
+      },
+      "required": ["lastActive", "platform"]
+    },
     "GlobalSettings": {
       "title": "GlobalSettings",
       "description": "Global application configuration, welcome message, and ads settings",
@@ -80,6 +91,10 @@
     "channels": {
       "schema": "Channel",
       "description": "Collection of available linear TV or IPTV channels"
+    },
+    "active_sessions": {
+      "schema": "ActiveSession",
+      "description": "Collection of real-time web & app active user sessions"
     },
     "settings": {
       "schema": "GlobalSettings",

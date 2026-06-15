@@ -22,10 +22,10 @@ function resolveUrl(baseUrl: string, relativeUrl: string): string {
  * This guarantees that both sub-playlists (.m3u8) and video keyframes/segments (.ts, decryption keys)
  * are recursively fetched through the proxy, ensuring a 100% bypass of HTTPS mixed-content and CORS errors.
  */
-function rewriteM3U8(content: string, baseUrl: string, reqHost: string, isSecure: boolean): string {
-  const lines = content.split('\n');
-  const protocol = isSecure ? 'https' : 'http';
-  const proxyBase = `${protocol}://${reqHost}/api/proxy?url=`;
+function rewriteM3U8(content: string, baseUrl: string): string {
+  // Normalize line endings to avoid \r parsing issues on different CDNs
+  const lines = content.replace(/\r/g, '').split('\n');
+  const proxyBase = `/api/proxy?url=`;
 
   const rewrittenLines = lines.map(line => {
     const trimmed = line.trim();
@@ -119,23 +119,18 @@ async function startServer() {
         // HLS playlist manifest: Parse and route sub-links
         res.setHeader('Content-Type', 'application/vnd.apple.mpegurl');
         const originalText = await response.text();
-        const requestHost = req.headers.host || 'localhost:3000';
-        const isRequestSecure = req.secure || req.headers['x-forwarded-proto'] === 'https';
         
-        const rewrittenManifest = rewriteM3U8(originalText, urlParam, requestHost, isRequestSecure);
+        const rewrittenManifest = rewriteM3U8(originalText, urlParam);
         return res.send(rewrittenManifest);
       } else {
         // Binary streaming segments (.ts files, etc.)
         if (contentType) {
           res.setHeader('Content-Type', contentType);
         }
-        if (response.body) {
-          // Stream stream chunk-by-chunk using native Web stream to node connection mapper
-          const nodeStream = Readable.fromWeb(response.body as any);
-          nodeStream.pipe(res);
-        } else {
-          return res.status(500).send("Target response body empty.");
-        }
+        
+        // Fetch as arrayBuffer to guarantee Node compatibility across all environments
+        const arrayBuffer = await response.arrayBuffer();
+        return res.send(Buffer.from(arrayBuffer));
       }
     } catch (err: any) {
       console.error("HLS Streaming Proxy Failure:", err);

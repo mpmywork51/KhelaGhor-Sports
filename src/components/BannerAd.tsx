@@ -25,7 +25,7 @@ export default function BannerAd({ code, enabled }: BannerAdProps) {
 
   return (
     <div 
-      id="khelaghor_banner_ad"
+      id="livekhela_banner_ad"
       ref={containerRef} 
       className="w-full max-w-4xl mx-auto my-6 p-2 rounded-xl bg-zinc-950/20 border border-white/5 flex items-center justify-center overflow-hidden min-h-[90px] backdrop-blur-md"
     />
