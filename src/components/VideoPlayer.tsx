@@ -72,6 +72,19 @@ export default function VideoPlayer({ server1Url, server2Url, server3Url, server
     }, 4000) as unknown as number;
   };
 
+  const toggleControlsImmediate = () => {
+    if (showControls) {
+      setShowControls(false);
+      if (controlsTimeoutRef.current) {
+        window.clearTimeout(controlsTimeoutRef.current);
+        controlsTimeoutRef.current = null;
+      }
+    } else {
+      setShowControls(true);
+      resetControlsTimeout();
+    }
+  };
+
   useEffect(() => {
     resetControlsTimeout();
     return () => {
@@ -394,7 +407,7 @@ export default function VideoPlayer({ server1Url, server2Url, server3Url, server
       ref={playerContainerRef}
       className="relative w-full aspect-video bg-black rounded-2xl overflow-hidden shadow-2xl border border-white/10 group select-none"
       onMouseMove={resetControlsTimeout}
-      onClick={resetControlsTimeout}
+      onClick={toggleControlsImmediate}
     >
       {/* Video Raw Element */}
       <video
@@ -403,8 +416,7 @@ export default function VideoPlayer({ server1Url, server2Url, server3Url, server
         playsInline
         onClick={(e) => {
           e.stopPropagation();
-          setShowControls(prev => !prev);
-          resetControlsTimeout();
+          toggleControlsImmediate();
         }}
         onWaiting={() => setIsBuffering(true)}
         onPlaying={() => setIsBuffering(false)}
