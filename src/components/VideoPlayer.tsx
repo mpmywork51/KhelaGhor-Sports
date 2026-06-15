@@ -44,7 +44,30 @@ export default function VideoPlayer({ server1Url, server2Url, server3Url, server
   const [showControls, setShowControls] = useState(true);
   const [isMobile, setIsMobile] = useState(false);
   const [fallbackTriggered, setFallbackTriggered] = useState(false);
+  const [useProxy, setUseProxy] = useState<boolean>(() => {
+    try {
+      const saved = localStorage.getItem('livekhela_use_proxy_v2');
+      return saved !== null ? JSON.parse(saved) : false;
+    } catch {
+      return false;
+    }
+  });
   const controlsTimeoutRef = useRef<number | null>(null);
+
+  const toggleProxy = () => {
+    const nextVal = !useProxy;
+    setUseProxy(nextVal);
+    try {
+      localStorage.setItem('livekhela_use_proxy_v2', JSON.stringify(nextVal));
+    } catch (e) {
+      console.error(e);
+    }
+    resetControlsTimeout();
+    // Delay slightly to ensure state is committed then re-init player
+    setTimeout(() => {
+      initializePlayer();
+    }, 50);
+  };
 
   // Check mobile user agent
   useEffect(() => {
@@ -105,6 +128,10 @@ export default function VideoPlayer({ server1Url, server2Url, server3Url, server
   const getStreamSource = (url: string): string => {
     if (!url) return '';
     if (url.startsWith('/') || url.startsWith('blob:') || url.startsWith('data:')) {
+      return url;
+    }
+    // If proxy is disabled, play raw direct stream URL natively (useful for geo-restricted feeds)
+    if (!useProxy) {
       return url;
     }
     // Route external HTTP and HTTPS streams through our server-side secure referer-spoofing proxy
@@ -516,26 +543,43 @@ export default function VideoPlayer({ server1Url, server2Url, server3Url, server
 
       {/* Errors interface */}
       {hasError && (
-        <div className="absolute inset-0 flex flex-col items-center justify-center bg-zinc-950/90 text-center p-6 z-30">
-          <AlertTriangle className="w-12 h-12 text-rose-500 animate-bounce mb-3" />
-          <p className="text-white font-medium text-base mb-4 max-w-md leading-relaxed px-4">
+        <div className="absolute inset-0 flex flex-col items-center justify-center bg-zinc-950/90 text-center p-4 sm:p-6 z-30 select-none">
+          <AlertTriangle className="w-10 h-10 sm:w-12 sm:h-12 text-rose-500 animate-bounce mb-2 sm:mb-3" />
+          <p className="text-white font-medium text-xs sm:text-base mb-3 sm:mb-4 max-w-md leading-relaxed px-4">
             {errorMessage}
           </p>
-          <div className="flex gap-3">
+          <div className="flex flex-col gap-3 sm:gap-4 items-center">
+            <div className="flex gap-2 sm:gap-3">
+              <button
+                id="player_error_retry"
+                onClick={retryPlayback}
+                className="px-4 py-1.5 sm:px-5 sm:py-2 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-sans font-medium text-xs sm:text-sm flex items-center gap-2 active:scale-95 transition"
+              >
+                <RotateCw size={14} className="sm:size-[16px]" />
+                <span>আবার চেষ্টা করুন</span>
+              </button>
+              <button
+                onClick={onClose}
+                className="px-4 py-1.5 sm:px-5 sm:py-2 rounded-xl bg-white/10 text-white font-sans text-xs sm:text-sm border border-white/10 hover:bg-white/20 active:scale-95 transition"
+              >
+                ফিরে যান
+              </button>
+            </div>
+
             <button
-              id="player_error_retry"
-              onClick={retryPlayback}
-              className="px-5 py-2 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-sans font-medium text-sm flex items-center gap-2 active:scale-95 transition"
+              onClick={toggleProxy}
+              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg border transition text-[10px] sm:text-xs font-sans font-semibold ${
+                useProxy 
+                  ? 'bg-emerald-500/10 border-emerald-500/30 text-emerald-400 hover:bg-emerald-500/20' 
+                  : 'bg-zinc-800/80 border-zinc-700 text-zinc-400 hover:bg-zinc-700/80'
+              }`}
             >
-              <RotateCw size={16} />
-              <span>আবার চেষ্টা করুন</span>
+              <span className={`w-1.5 h-1.5 rounded-full ${useProxy ? 'bg-emerald-400 animate-pulse' : 'bg-zinc-500'}`} />
+              <span>প্রক্সি টাইপ পরিবর্তন করুন (বর্তমানে: {useProxy ? 'সার্ভার প্রক্সি' : 'সরাসরি নেটওয়ার্ক'})</span>
             </button>
-            <button
-              onClick={onClose}
-              className="px-5 py-2 rounded-xl bg-white/10 text-white font-sans text-sm border border-white/10 hover:bg-white/20 active:scale-95 transition"
-            >
-              ফিরে যান
-            </button>
+            <p className="text-[9px] sm:text-[10px] text-zinc-400 max-w-xs leading-normal">
+              * প্রক্সি বন্ধ করলে ভিডিও সরাসরি আপনার মোবাইল নেটওয়ার্ক দিয়ে লোড হবে। প্রক্সি চালু করলে আমাদের সিকিউর প্রক্সি সার্ভার ব্যবহার হবে।
+            </p>
           </div>
         </div>
       )}
@@ -598,6 +642,21 @@ export default function VideoPlayer({ server1Url, server2Url, server3Url, server
         </div>
 
         <div className="flex items-center gap-2 sm:gap-3">
+          {/* Proxy Helper Toggle Button */}
+          <button
+            id="player_proxy_toggle"
+            onClick={toggleProxy}
+            className={`flex items-center gap-1 px-2.2 sm:px-2.5 py-1.5 rounded-full border transition active:scale-95 text-[10px] sm:text-xs font-sans font-semibold shrink-0 ${
+              useProxy 
+                ? 'bg-emerald-500/10 border-emerald-500/30 text-emerald-400 hover:bg-emerald-500/20' 
+                : 'bg-zinc-800/80 border-zinc-700 text-zinc-400 hover:bg-zinc-700/80'
+            }`}
+            title="Toggle server proxy for geo-blocked streams"
+          >
+            <span className={`w-1.5 h-1.5 rounded-full ${useProxy ? 'bg-emerald-400 animate-pulse' : 'bg-zinc-500'}`} />
+            <span>প্রক্সি: {useProxy ? 'চালু' : 'বন্ধ'}</span>
+          </button>
+
           {/* Aspect Ratio Adjustment Toggle button */}
           <button
             id="player_aspect_ratio"

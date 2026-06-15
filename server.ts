@@ -21,11 +21,12 @@ function resolveUrl(baseUrl: string, relativeUrl: string): string {
  * Rewrites relative/absolute paths in the .m3u8 manifest files to route back through our secure proxy.
  * This guarantees that both sub-playlists (.m3u8) and video keyframes/segments (.ts, decryption keys)
  * are recursively fetched through the proxy, ensuring a 100% bypass of HTTPS mixed-content and CORS errors.
+ * Prepending the absolute host URL resolves AVPlayer's native pathing bugs on mobile devices like iOS.
  */
-function rewriteM3U8(content: string, baseUrl: string): string {
+function rewriteM3U8(content: string, baseUrl: string, requestHostUrl: string): string {
   // Normalize line endings to avoid \r parsing issues on different CDNs
   const lines = content.replace(/\r/g, '').split('\n');
-  const proxyBase = `/api/proxy?url=`;
+  const proxyBase = `${requestHostUrl}/api/proxy?url=`;
 
   const rewrittenLines = lines.map(line => {
     const trimmed = line.trim();
@@ -120,7 +121,13 @@ async function startServer() {
         res.setHeader('Content-Type', 'application/vnd.apple.mpegurl');
         const originalText = await response.text();
         
-        const rewrittenManifest = rewriteM3U8(originalText, urlParam);
+        // Construct absolute proxy URL base for compatibility with native players (iOS Safari/AVPlayer)
+        const host = String(req.headers['x-forwarded-host'] || req.get('host') || '');
+        const isSecure = req.secure || req.headers['x-forwarded-proto'] === 'https' || (!host.includes('localhost') && !host.includes('127.0.0.1'));
+        const protocol = isSecure ? 'https' : 'http';
+        const requestHostUrl = `${protocol}://${host}`;
+        
+        const rewrittenManifest = rewriteM3U8(originalText, urlParam, requestHostUrl);
         return res.send(rewrittenManifest);
       } else {
         // Binary streaming segments (.ts files, etc.)
