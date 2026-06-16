@@ -288,6 +288,136 @@ export default function AdminPanel({
     }
   };
 
+  // Editing Live Match states
+  const [editingMatch, setEditingMatch] = useState<Match | null>(null);
+  const [editMatchCat, setEditMatchCat] = useState<SportCategory>('cricket');
+  const [editMatchComp, setEditMatchComp] = useState('');
+  const [editMatchTeam1Name, setEditMatchTeam1Name] = useState('');
+  const [editMatchTeam1Logo, setEditMatchTeam1Logo] = useState('');
+  const [editMatchTeam2Name, setEditMatchTeam2Name] = useState('');
+  const [editMatchTeam2Logo, setEditMatchTeam2Logo] = useState('');
+  const [editMatchServer1, setEditMatchServer1] = useState('');
+  const [editMatchServer2, setEditMatchServer2] = useState('');
+  const [editMatchServer3, setEditMatchServer3] = useState('');
+  const [editMatchServer4, setEditMatchServer4] = useState('');
+  const [editMatchSerial, setEditMatchSerial] = useState('999');
+
+  const startEditingMatch = (m: Match) => {
+    setEditingMatch(m);
+    setEditMatchCat(m.category);
+    setEditMatchComp(m.competition || '');
+    setEditMatchTeam1Name(m.team1Name);
+    setEditMatchTeam1Logo(m.team1Logo || '');
+    setEditMatchTeam2Name(m.team2Name);
+    setEditMatchTeam2Logo(m.team2Logo || '');
+    setEditMatchServer1(m.server1Url);
+    setEditMatchServer2(m.server2Url || '');
+    setEditMatchServer3(m.server3Url || '');
+    setEditMatchServer4(m.server4Url || '');
+    setEditMatchSerial(m.serial !== undefined && m.serial !== null ? m.serial.toString() : '999');
+  };
+
+  const handleEditMatchSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!editingMatch) return;
+    if (!editMatchTeam1Name || !editMatchTeam2Name || !editMatchServer1) {
+      triggerNotification('অনুগ্রহ করে দলের নাম এবং সার্ভার ১ এর লিঙ্ক পূরণ করুন।', 'error');
+      return;
+    }
+    try {
+      await updateMatch(editingMatch.id, {
+        category: editMatchCat,
+        team1Name: editMatchTeam1Name,
+        team1Logo: editMatchTeam1Logo,
+        team2Name: editMatchTeam2Name,
+        team2Logo: editMatchTeam2Logo,
+        server1Url: editMatchServer1,
+        server2Url: editMatchServer2,
+        server3Url: editMatchServer3,
+        server4Url: editMatchServer4,
+        isLive: editingMatch.isLive ?? true,
+        competition: editMatchComp,
+        serial: editMatchSerial ? Number(editMatchSerial) : 999
+      });
+      triggerNotification('লাইভ ম্যাচ সফলভাবে আপডেট হয়েছে!');
+      setEditingMatch(null);
+    } catch (err: any) {
+      triggerNotification('আপডেট করতে ত্রুটি হয়েছে: ' + err.message, 'error');
+    }
+  };
+
+  // Editing Upcoming Match states
+  const [editingUpcomingMatch, setEditingUpcomingMatch] = useState<UpcomingMatch | null>(null);
+  const [editUpCat, setEditUpCat] = useState<SportCategory>('cricket');
+  const [editUpComp, setEditUpComp] = useState('');
+  const [editUpTeam1Name, setEditUpTeam1Name] = useState('');
+  const [editUpTeam1Logo, setEditUpTeam1Logo] = useState('');
+  const [editUpTeam2Name, setEditUpTeam2Name] = useState('');
+  const [editUpTeam2Logo, setEditUpTeam2Logo] = useState('');
+  const [editUpServer1, setEditUpServer1] = useState('');
+  const [editUpServer2, setEditUpServer2] = useState('');
+  const [editUpServer3, setEditUpServer3] = useState('');
+  const [editUpServer4, setEditUpServer4] = useState('');
+  const [editUpDateTime, setEditUpDateTime] = useState('');
+  const [editUpSerial, setEditUpSerial] = useState('999');
+
+  const startEditingUpcomingMatch = (um: UpcomingMatch) => {
+    setEditingUpcomingMatch(um);
+    setEditUpCat(um.category);
+    setEditUpComp(um.competition || '');
+    setEditUpTeam1Name(um.team1Name);
+    setEditUpTeam1Logo(um.team1Logo || '');
+    setEditUpTeam2Name(um.team2Name);
+    setEditUpTeam2Logo(um.team2Logo || '');
+    setEditUpServer1(um.server1Url || '');
+    setEditUpServer2(um.server2Url || '');
+    setEditUpServer3(um.server3Url || '');
+    setEditUpServer4(um.server4Url || '');
+    
+    // Format epoch ms to YYYY-MM-DDThh:mm for datetime-local value
+    const d = new Date(um.scheduledTime);
+    const tzOffset = d.getTimezoneOffset() * 60000; // offset in milliseconds
+    const localISOTime = (new Date(d.getTime() - tzOffset)).toISOString().slice(0, 16);
+    setEditUpDateTime(localISOTime);
+    setEditUpSerial(um.serial !== undefined && um.serial !== null ? um.serial.toString() : '999');
+  };
+
+  const handleEditUpcomingMatchSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!editingUpcomingMatch) return;
+    if (!editUpTeam1Name || !editUpTeam2Name || !editUpDateTime) {
+      triggerNotification('অনুগ্রহ করে দলের নাম ও ম্যাচের সময়সূচী পূরণ করুন।', 'error');
+      return;
+    }
+
+    const scheduledTimeMs = new Date(editUpDateTime).getTime();
+    if (isNaN(scheduledTimeMs)) {
+      triggerNotification('অকার্যকর তারিখ ও সময় ফরম্যাট।', 'error');
+      return;
+    }
+
+    try {
+      await updateUpcomingMatch(editingUpcomingMatch.id, {
+        category: editUpCat,
+        team1Name: editUpTeam1Name,
+        team1Logo: editUpTeam1Logo,
+        team2Name: editUpTeam2Name,
+        team2Logo: editUpTeam2Logo,
+        server1Url: editUpServer1,
+        server2Url: editUpServer2,
+        server3Url: editUpServer3,
+        server4Url: editUpServer4,
+        competition: editUpComp,
+        scheduledTime: scheduledTimeMs,
+        serial: editUpSerial ? Number(editUpSerial) : 999
+      });
+      triggerNotification('আসন্ন ম্যাচ সফলভাবে আপডেট হয়েছে!');
+      setEditingUpcomingMatch(null);
+    } catch (err: any) {
+      triggerNotification('আপডেট করতে ত্রুটি হয়েছে: ' + err.message, 'error');
+    }
+  };
+
   const handleMoveMatch = async (m: Match, direction: 'up' | 'down') => {
     const currentSerial = m.serial !== undefined && m.serial !== null ? m.serial : 999;
     const targetSerial = direction === 'up' ? Math.max(1, currentSerial - 1) : currentSerial + 1;
@@ -705,6 +835,15 @@ export default function AdminPanel({
 
                         <button
                           type="button"
+                          onClick={() => startEditingMatch(m)}
+                          className="p-2 bg-emerald-500/10 hover:bg-emerald-500/20 hover:text-emerald-400 rounded-lg border border-emerald-500/20 transition"
+                          title="ম্যাচ পরিবর্তন করুন"
+                        >
+                          <Pencil size={16} />
+                        </button>
+
+                        <button
+                          type="button"
                           onClick={() => deleteMatch(m.id)}
                           className="p-2 bg-rose-500/10 hover:bg-rose-500/20 hover:text-rose-400 rounded-lg border border-rose-500/20 transition duration-200"
                           title="Finish Match"
@@ -919,6 +1058,15 @@ export default function AdminPanel({
                             ▼
                           </button>
                         </div>
+
+                        <button
+                          type="button"
+                          onClick={() => startEditingUpcomingMatch(um)}
+                          className="p-2 bg-emerald-500/10 hover:bg-emerald-500/20 hover:text-emerald-400 rounded-lg border border-emerald-500/20 transition"
+                          title="আসন্ন ম্যাচ এডিট করুন"
+                        >
+                          <Pencil size={15} />
+                        </button>
 
                         <button
                           type="button"
@@ -1571,6 +1719,344 @@ export default function AdminPanel({
 
 
       </div>
+
+      {/* Live Match editing popup modal overlay */}
+      {editingMatch && (
+        <div className="fixed inset-0 bg-black/80 backdrop-blur-md z-50 flex items-center justify-center p-4">
+          <div className="w-full max-w-lg bg-zinc-950 border border-white/10 rounded-2xl p-6 shadow-2xl relative max-h-[90vh] overflow-y-auto scrollbar-none">
+            <div className="flex items-center justify-between mb-4 pb-2 border-b border-white/5">
+              <h3 className="text-sm font-bold text-emerald-400 font-sans tracking-tight uppercase flex items-center gap-2">
+                <Radio size={16} className="animate-pulse" />
+                <span>লাইভ ম্যাচ এডিট করুন</span>
+              </h3>
+              <button
+                onClick={() => setEditingMatch(null)}
+                className="text-slate-400 hover:text-white transition font-bold font-sans text-xs bg-white/5 hover:bg-white/10 px-3 py-1.5 rounded-lg"
+              >
+                বাতিল
+              </button>
+            </div>
+
+            <form onSubmit={handleEditMatchSubmit} className="flex flex-col gap-4 font-sans text-xs sm:text-sm text-left">
+              {/* Category selector */}
+              <div className="flex flex-col gap-1.5">
+                <label className="text-xs text-slate-400">ক্যাটাগরি নির্ধারণ করুন</label>
+                <div className="grid grid-cols-3 gap-2">
+                  {(['cricket', 'football', 'others'] as SportCategory[]).map(cat => (
+                    <button
+                      key={cat}
+                      type="button"
+                      onClick={() => setEditMatchCat(cat)}
+                      className={`py-2 text-xs font-sans rounded-lg border transition ${
+                        editMatchCat === cat 
+                          ? 'bg-emerald-500/10 border-emerald-500/50 text-emerald-300' 
+                          : 'border-white/5 text-slate-400 hover:bg-white/5'
+                      }`}
+                    >
+                      {cat === 'cricket' ? 'ক্রিকেট' : cat === 'football' ? 'ফুটবল' : 'অন্যান্য'}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {/* Tournament Competition tag */}
+              <div className="flex flex-col gap-1">
+                <label className="text-xs text-slate-400">টুর্নামেন্ট / কম্পিটিশন নাম (ঐচ্ছিক)</label>
+                <input
+                  type="text"
+                  placeholder="উদা: FIFA World Cup, IPL"
+                  value={editMatchComp}
+                  onChange={(e) => setEditMatchComp(e.target.value)}
+                  className="w-full px-3 py-2 text-xs bg-black/40 rounded-lg border border-white/10 text-white placeholder-slate-500 focus:outline-none focus:border-emerald-500 transition font-sans"
+                />
+              </div>
+
+              {/* Symmetric Teams Info */}
+              <div className="grid grid-cols-2 gap-3">
+                <div className="flex flex-col gap-1.5">
+                  <label className="text-xs text-slate-400">দল ১ (নাম)</label>
+                  <input
+                    type="text"
+                    required
+                    placeholder="উদা: BAN"
+                    value={editMatchTeam1Name}
+                    onChange={(e) => setEditMatchTeam1Name(e.target.value)}
+                    className="w-full px-3 py-2 text-xs bg-black/40 rounded-lg border border-white/10 text-white placeholder-slate-500 focus:outline-none focus:border-emerald-500 transition font-sans"
+                  />
+                  <input
+                    type="url"
+                    placeholder="লোগো লিংক (Web URL)"
+                    value={editMatchTeam1Logo}
+                    onChange={(e) => setEditMatchTeam1Logo(e.target.value)}
+                    className="w-full px-2.5 py-1.5 text-[11px] bg-black/40 rounded-lg border border-white/20 text-slate-300 placeholder-slate-600 focus:outline-none focus:border-emerald-500 transition font-sans"
+                  />
+                </div>
+
+                <div className="flex flex-col gap-1.5">
+                  <label className="text-xs text-slate-400">দল ২ (নাম)</label>
+                  <input
+                    type="text"
+                    required
+                    placeholder="উদা: NZ"
+                    value={editMatchTeam2Name}
+                    onChange={(e) => setEditMatchTeam2Name(e.target.value)}
+                    className="w-full px-3 py-2 text-xs bg-black/40 rounded-lg border border-white/10 text-white placeholder-slate-500 focus:outline-none focus:border-emerald-500 transition font-sans"
+                  />
+                  <input
+                    type="url"
+                    placeholder="লোগো লিংক (Web URL)"
+                    value={editMatchTeam2Logo}
+                    onChange={(e) => setEditMatchTeam2Logo(e.target.value)}
+                    className="w-full px-2.5 py-1.5 text-[11px] bg-black/40 rounded-lg border border-white/20 text-slate-300 placeholder-slate-600 focus:outline-none focus:border-emerald-500 transition font-sans"
+                  />
+                </div>
+              </div>
+
+              {/* Streaming Links */}
+              <div className="flex flex-col gap-2">
+                <div className="flex flex-col gap-1">
+                  <label className="text-xs text-slate-400">সার্ভার ১ স্ট্রিম লিঙ্ক (.m3u8 URL)</label>
+                  <input
+                    type="url"
+                    required
+                    placeholder="https://example.com/live/stream1.m3u8"
+                    value={editMatchServer1}
+                    onChange={(e) => setEditMatchServer1(e.target.value)}
+                    className="w-full px-3 py-2 text-xs bg-black/40 rounded-lg border border-white/10 text-white placeholder-slate-500 focus:outline-none focus:border-emerald-500 transition font-mono text-[11px]"
+                  />
+                </div>
+
+                <div className="flex flex-col gap-1">
+                  <label className="text-xs text-slate-400">সার্ভার ২ স্ট্রিম লিঙ্ক (.m3u8 URL - ব্যাকআপ)</label>
+                  <input
+                    type="url"
+                    placeholder="https://example.com/live/stream2.m3u8"
+                    value={editMatchServer2}
+                    onChange={(e) => setEditMatchServer2(e.target.value)}
+                    className="w-full px-3 py-2 text-xs bg-black/40 rounded-lg border border-white/10 text-white placeholder-slate-500 focus:outline-none focus:border-emerald-500 transition font-mono text-[11px]"
+                  />
+                </div>
+
+                <div className="flex flex-col gap-1">
+                  <label className="text-xs text-slate-400">সার্ভার ৩ স্ট্রিম লিঙ্ক (.m3u8 URL - ব্যাকআপ)</label>
+                  <input
+                    type="url"
+                    placeholder="https://example.com/live/stream3.m3u8"
+                    value={editMatchServer3}
+                    onChange={(e) => setEditMatchServer3(e.target.value)}
+                    className="w-full px-3 py-2 text-xs bg-black/40 rounded-lg border border-white/10 text-white placeholder-slate-500 focus:outline-none focus:border-emerald-500 transition font-mono text-[11px]"
+                  />
+                </div>
+
+                <div className="flex flex-col gap-1">
+                  <label className="text-xs text-slate-400">সার্ভার ৪ স্ট্রিম লিঙ্ক (.m3u8 URL - ব্যাকআপ)</label>
+                  <input
+                    type="url"
+                    placeholder="https://example.com/live/stream4.m3u8"
+                    value={editMatchServer4}
+                    onChange={(e) => setEditMatchServer4(e.target.value)}
+                    className="w-full px-3 py-2 text-xs bg-black/40 rounded-lg border border-white/10 text-white placeholder-slate-500 focus:outline-none focus:border-emerald-500 transition font-mono text-[11px]"
+                  />
+                </div>
+
+                <div className="flex flex-col gap-1">
+                  <label className="text-xs text-slate-400">ক্রমিক নম্বর / পজিশন (১ হলে সবার উপরে থাকবে)</label>
+                  <input
+                    type="number"
+                    min="1"
+                    placeholder="উদা: ১, ২, ৩ ... (ডিফল্ট: ৯৯৯)"
+                    value={editMatchSerial}
+                    onChange={(e) => setEditMatchSerial(e.target.value)}
+                    className="w-full px-3 py-2 text-xs bg-black/40 rounded-lg border border-white/10 text-white placeholder-slate-500 focus:outline-none focus:border-emerald-500 transition font-sans"
+                  />
+                </div>
+              </div>
+
+              <div className="flex gap-2.5 mt-2">
+                <button
+                  type="button"
+                  onClick={() => setEditingMatch(null)}
+                  className="flex-1 py-2 bg-white/5 hover:bg-white/10 text-white font-bold rounded-xl transition"
+                >
+                  বাতিল
+                </button>
+                <button
+                  type="submit"
+                  className="flex-1 py-2 bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-bold rounded-xl active:scale-95 transition"
+                >
+                  পরিবর্তন সংরক্ষণ করুন
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* Upcoming Match editing popup modal overlay */}
+      {editingUpcomingMatch && (
+        <div className="fixed inset-0 bg-black/80 backdrop-blur-md z-50 flex items-center justify-center p-4">
+          <div className="w-full max-w-lg bg-zinc-950 border border-white/10 rounded-2xl p-6 shadow-2xl relative max-h-[90vh] overflow-y-auto scrollbar-none">
+            <div className="flex items-center justify-between mb-4 pb-2 border-b border-white/5">
+              <h3 className="text-sm font-bold text-emerald-400 font-sans tracking-tight uppercase flex items-center gap-2">
+                <Calendar size={16} />
+                <span>আসন্ন ম্যাচ এডিট করুন</span>
+              </h3>
+              <button
+                onClick={() => setEditingUpcomingMatch(null)}
+                className="text-slate-400 hover:text-white transition font-bold font-sans text-xs bg-white/5 hover:bg-white/10 px-3 py-1.5 rounded-lg"
+              >
+                বাতিল
+              </button>
+            </div>
+
+            <form onSubmit={handleEditUpcomingMatchSubmit} className="flex flex-col gap-4 font-sans text-xs sm:text-sm text-left">
+              <div className="flex flex-col gap-1.5">
+                <label className="text-xs text-slate-400">ক্যাটাগরি</label>
+                <div className="grid grid-cols-3 gap-2 font-sans">
+                  {(['cricket', 'football', 'others'] as SportCategory[]).map(cat => (
+                    <button
+                      key={cat}
+                      type="button"
+                      onClick={() => setEditUpCat(cat)}
+                      className={`py-2 text-xs font-sans rounded-lg border transition ${
+                        editUpCat === cat 
+                          ? 'bg-emerald-500/10 border-emerald-500/50 text-emerald-300' 
+                          : 'border-white/5 text-slate-400 hover:bg-white/5'
+                      }`}
+                    >
+                      {cat === 'cricket' ? 'ক্রিকেট' : cat === 'football' ? 'ফুটবল' : 'অন্যান্য'}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {/* Symmetrical team structures */}
+              <div className="grid grid-cols-2 gap-3">
+                <div className="flex flex-col gap-1.5">
+                  <label className="text-xs text-slate-400">দল ১ (নাম)</label>
+                  <input
+                    type="text"
+                    required
+                    placeholder="উদা: IND"
+                    value={editUpTeam1Name}
+                    onChange={(e) => setEditUpTeam1Name(e.target.value)}
+                    className="w-full px-3 py-2 text-xs bg-black/40 rounded-lg border border-white/10 text-white focus:outline-none focus:border-emerald-500 font-sans"
+                  />
+                  <input
+                    type="url"
+                    placeholder="লোগো লিংক"
+                    value={editUpTeam1Logo}
+                    onChange={(e) => setEditUpTeam1Logo(e.target.value)}
+                    className="w-full px-2.5 py-1.5 text-[11px] bg-black/40 rounded-lg border border-white/25 text-slate-300 focus:outline-none focus:border-emerald-500 font-sans"
+                  />
+                </div>
+
+                <div className="flex flex-col gap-1.5">
+                  <label className="text-xs text-slate-400">দল ২ (নাম)</label>
+                  <input
+                    type="text"
+                    required
+                    placeholder="উদা: PAK"
+                    value={editUpTeam2Name}
+                    onChange={(e) => setEditUpTeam2Name(e.target.value)}
+                    className="w-full px-3 py-2 text-xs bg-black/40 rounded-lg border border-white/10 text-white focus:outline-none focus:border-emerald-500 font-sans"
+                  />
+                  <input
+                    type="url"
+                    placeholder="লোগো লিংক"
+                    value={editUpTeam2Logo}
+                    onChange={(e) => setEditUpTeam2Logo(e.target.value)}
+                    className="w-full px-2.5 py-1.5 text-[11px] bg-black/40 rounded-lg border border-white/25 text-slate-300 focus:outline-none focus:border-emerald-500 font-sans"
+                  />
+                </div>
+              </div>
+
+              {/* Release datetime input */}
+              <div className="flex flex-col gap-1.5">
+                <label className="text-xs text-slate-400">কখন লাইভ শুরু হবে?</label>
+                <input
+                  type="datetime-local"
+                  required
+                  value={editUpDateTime}
+                  onChange={(e) => setEditUpDateTime(e.target.value)}
+                  className="w-full px-3 py-2 text-xs bg-black/40 rounded-lg border border-white/10 text-white focus:outline-none focus:border-emerald-500 font-sans"
+                />
+              </div>
+
+              {/* Additional optional fields */}
+              <div className="flex flex-col gap-1">
+                <label className="text-xs text-slate-400">কম্পিটিশন ও অন্যান্য লিঙ্ক (ঐচ্ছিক)</label>
+                <input
+                  type="text"
+                  placeholder="উদা: T20 World Cup"
+                  value={editUpComp}
+                  onChange={(e) => setEditUpComp(e.target.value)}
+                  className="w-full px-3 py-2 text-xs bg-black/40 rounded-lg border border-white/10 text-white focus:outline-none focus:border-emerald-500 font-sans"
+                />
+                <div className="grid grid-cols-2 gap-2 mt-1.5">
+                  <input
+                    type="url"
+                    placeholder="স্ট্রিম ১"
+                    value={editUpServer1}
+                    onChange={(e) => setEditUpServer1(e.target.value)}
+                    className="w-full px-2.5 py-1.5 text-[11px] bg-black/40 rounded-lg border border-white/25 text-slate-300 focus:outline-none focus:border-emerald-500 font-sans"
+                  />
+                  <input
+                    type="url"
+                    placeholder="স্ট্রিম ২"
+                    value={editUpServer2}
+                    onChange={(e) => setEditUpServer2(e.target.value)}
+                    className="w-full px-2.5 py-1.5 text-[11px] bg-black/40 rounded-lg border border-white/25 text-slate-300 focus:outline-none focus:border-emerald-500 font-sans"
+                  />
+                  <input
+                    type="url"
+                    placeholder="স্ট্রিম ৩ (ঐচ্ছিক)"
+                    value={editUpServer3}
+                    onChange={(e) => setEditUpServer3(e.target.value)}
+                    className="w-full px-2.5 py-1.5 text-[11px] bg-black/40 rounded-lg border border-white/25 text-slate-300 focus:outline-none focus:border-emerald-500 font-sans"
+                  />
+                  <input
+                    type="url"
+                    placeholder="স্ট্রিম ৪ (ঐচ্ছিক)"
+                    value={editUpServer4}
+                    onChange={(e) => setEditUpServer4(e.target.value)}
+                    className="w-full px-2.5 py-1.5 text-[11px] bg-black/40 rounded-lg border border-white/25 text-slate-300 focus:outline-none focus:border-emerald-500 font-sans"
+                  />
+                </div>
+
+                <div className="flex flex-col gap-1 mt-1.5">
+                  <label className="text-xs text-slate-400">ক্রমিক নম্বর / পজিশন (১ হলে সবার উপরে থাকবে)</label>
+                  <input
+                    type="number"
+                    min="1"
+                    placeholder="উদা: ১, ২, ৩ ... (ডিফল্ট: ৯৯৯)"
+                    value={editUpSerial}
+                    onChange={(e) => setEditUpSerial(e.target.value)}
+                    className="w-full px-3 py-2 text-xs bg-black/40 rounded-lg border border-white/10 text-white placeholder-slate-500 focus:outline-none focus:border-emerald-500 transition font-sans"
+                  />
+                </div>
+              </div>
+
+              <div className="flex gap-2.5 mt-2 font-sans">
+                <button
+                  type="button"
+                  onClick={() => setEditingUpcomingMatch(null)}
+                  className="flex-1 py-2 bg-white/5 hover:bg-white/10 text-white font-bold rounded-xl transition"
+                >
+                  বাতিল
+                </button>
+                <button
+                  type="submit"
+                  className="flex-1 py-2 bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-bold rounded-xl active:scale-95 transition"
+                >
+                  পরিবর্তন সংরক্ষণ করুন
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
     </div>
   );
 }
