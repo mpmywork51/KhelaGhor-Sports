@@ -136,14 +136,14 @@ export default function App() {
     };
   }, []);
 
-  // Pop-Under Ad system with frequency caps per browser session
+  // Pop-Under Ad system with frequency caps per user browser device visit
   useEffect(() => {
     if (settings?.popunderAdEnabled && settings?.popunderAdCode) {
-      const alreadyTriggeredKey = 'livekhela_session_popunder_triggered';
-      const isAlreadyTriggered = sessionStorage.getItem(alreadyTriggeredKey);
+      const alreadyTriggeredKey = 'livekhela_permanently_triggered_popunder';
+      const isAlreadyTriggered = localStorage.getItem(alreadyTriggeredKey);
 
       if (!isAlreadyTriggered) {
-        sessionStorage.setItem(alreadyTriggeredKey, 'true');
+        localStorage.setItem(alreadyTriggeredKey, 'true');
         try {
           // Parse and inject the Pop-Under script safely
           const container = document.createElement('div');
@@ -158,7 +158,7 @@ export default function App() {
             }
             document.body.appendChild(el);
           }
-          console.log('Pop-Under Ad Triggered and Session cap initialized.');
+          console.log('Pop-Under Ad Triggered and permanent device cap initialized.');
         } catch (e) {
           console.warn('Sandbox or formatting security blocked popunder scripts:', e);
         }

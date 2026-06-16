@@ -7,11 +7,23 @@ import { Readable } from "stream";
 process.env.NODE_TLS_REJECT_UNAUTHORIZED = '0';
 
 /**
- * Resolves a relative HLS path or URL context to a complete absolute URL.
+ * Resolves a relative HLS path or URL context to a complete absolute URL,
+ * merging query tokens (e.g. key, token, time) to preserve stream credentials.
  */
 function resolveUrl(baseUrl: string, relativeUrl: string): string {
   try {
-    return new URL(relativeUrl, baseUrl).href;
+    const baseObj = new URL(baseUrl);
+    const resolvedObj = new URL(relativeUrl, baseUrl);
+    
+    if (resolvedObj.hostname === baseObj.hostname) {
+      // Merge query parameters from base URL to the resolved URL if they don't already exist
+      baseObj.searchParams.forEach((value, key) => {
+        if (!resolvedObj.searchParams.has(key)) {
+          resolvedObj.searchParams.set(key, value);
+        }
+      });
+    }
+    return resolvedObj.href;
   } catch (err) {
     return relativeUrl;
   }

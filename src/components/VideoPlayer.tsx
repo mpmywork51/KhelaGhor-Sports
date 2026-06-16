@@ -117,6 +117,15 @@ export default function VideoPlayer({ server1Url, server2Url, server3Url, server
     };
   }, [isPlaying]);
 
+  // Synchronize player with updated incoming props automatically (for fast channel/match hopping without unmounting)
+  useEffect(() => {
+    const nextUrl = server1Url || server2Url || server3Url || server4Url || '';
+    const nextSrv = server1Url ? 1 : server2Url ? 2 : server3Url ? 3 : (4 as any);
+    setCurrentUrl(nextUrl);
+    setActiveServer(nextSrv);
+    setFallbackTriggered(false);
+  }, [server1Url, server2Url, server3Url, server4Url]);
+
   // Video initialization and stream HLS configuration
   useEffect(() => {
     initializePlayer();
