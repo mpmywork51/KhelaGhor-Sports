@@ -6,6 +6,20 @@
   --font-mono: "JetBrains Mono", ui-monospace, SFMono-Regular, monospace;
 }
 
+/* Base resets tailored for Android WebView wrapper wrappers */
+html, body {
+  -webkit-tap-highlight-color: transparent;
+  user-select: none;
+  -webkit-user-select: none;
+  overscroll-behavior-y: contain; /* Prevent browser pull-to-refresh swipe down gestures */
+}
+
+/* Ensure form/input elements remain fully editable */
+input, textarea, select {
+  user-select: text !important;
+  -webkit-user-select: text !important;
+}
+
 /* Custom styles for professional glassmorphism shadows and scrolls */
 .scrollbar-none::-webkit-scrollbar {
   display: none;

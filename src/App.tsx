@@ -91,6 +91,29 @@ export default function App() {
   // Bell Notification popup state
   const [showBellNotice, setShowBellNotice] = useState(false);
 
+  // Synchronized browser history alignment for Android & mobile WebView back-button presses
+  useEffect(() => {
+    if (activePlayback) {
+      window.history.pushState({ playerActive: true }, '');
+
+      const handlePopState = () => {
+        setActivePlayback(null);
+      };
+
+      window.addEventListener('popstate', handlePopState);
+      return () => {
+        window.removeEventListener('popstate', handlePopState);
+      };
+    }
+  }, [activePlayback]);
+
+  const handleClosePlayer = () => {
+    setActivePlayback(null);
+    if (window.history.state?.playerActive) {
+      window.history.back();
+    }
+  };
+
   // Subscribe to real-time sync listeners
   useEffect(() => {
     const unsubMatches = subscribeToMatches((liveList) => setMatches(liveList));
@@ -400,7 +423,7 @@ export default function App() {
                 server3Url={activePlayback.server3Url}
                 server4Url={activePlayback.server4Url}
                 title={activePlayback.title}
-                onClose={() => setActivePlayback(null)}
+                onClose={handleClosePlayer}
               />
             </motion.section>
           )}
