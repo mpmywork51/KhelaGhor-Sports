@@ -180,6 +180,9 @@ export default function VideoPlayer({ server1Url, server2Url, server3Url, server
         maxBufferHole: 0.1,
         nudgeMaxRetry: 10,
         nudgeDuration: 0.1,
+        autoStartLoad: true,
+        capLevelToPlayerSize: true,
+        startLevel: 1,
       } as any);
 
       hlsRef.current = hls;
