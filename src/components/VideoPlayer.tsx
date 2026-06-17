@@ -168,7 +168,9 @@ export default function VideoPlayer({ server1Url, server2Url, server3Url, server
     if (Hls.isSupported()) {
       const hls = new Hls({
         enableWorker: true,
-        lowLatencyMode: true,
+        lowLatencyMode: false,
+        maxBufferLength: 30,
+        maxMaxBufferLength: 60,
         backBufferLength: 90,
         manifestLoadingTimeOut: 15000,
         manifestLoadingMaxRetry: 5,
