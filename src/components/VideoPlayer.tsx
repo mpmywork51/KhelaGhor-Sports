@@ -176,7 +176,11 @@ export default function VideoPlayer({ server1Url, server2Url, server3Url, server
         manifestLoadingMaxRetry: 5,
         levelLoadingTimeOut: 15000,
         levelLoadingMaxRetry: 5,
-      });
+        initialLiveManifestSize: 1,
+        maxBufferHole: 0.1,
+        nudgeMaxRetry: 10,
+        nudgeDuration: 0.1,
+      } as any);
 
       hlsRef.current = hls;
       hls.loadSource(getStreamSource(currentUrl));
