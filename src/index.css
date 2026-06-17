@@ -47,3 +47,32 @@ input, textarea, select {
 .scale-102 {
   transform: scale(1.02);
 }
+
+/* ১. মোবাইল ভিউ (ডিফল্ট - যেমন আছে তেমনই থাকবে) */
+.button-container-class {
+  width: 100%;
+  padding: 10px;
+}
+
+/* ২. ট্যাব ভিউ (স্ক্রিন ৭৬৮ পিক্সেলের বেশি হলে বাটন একটু বড় হবে) */
+@media (min-width: 768px) {
+  .button-container-class {
+    max-width: 550px; /* ট্যাবের জন্য পারফেক্ট সাইজ */
+    margin: 0 auto;
+  }
+  .single-button-class {
+    padding: 12px 20px;
+    font-size: 16px;  /* লেখার সাইজ ট্যাবের উপযোগী */
+  }
+}
+
+/* ৩. পিসি/ডেস্কটপ ভিউ (স্ক্রিন ১০২৪ পিক্সেলের বেশি হলে আরও বড় হবে) */
+@media (min-width: 1024px) {
+  .button-container-class {
+    max-width: 750px; /* পিসির বড় স্ক্রিনের জন্য চওড়া সাইজ */
+  }
+  .single-button-class {
+    padding: 15px 30px;
+    font-size: 18px;  /* লেখার সাইজ পিসির উপযোগী */
+  }
+}
