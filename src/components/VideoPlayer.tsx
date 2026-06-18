@@ -209,22 +209,26 @@ export default function VideoPlayer({ server1Url, server2Url, server3Url, server
       });
 
       hls.on(Hls.Events.ERROR, (event, data) => {
-        console.error('HLS.js Error detected:', data);
         if (data.fatal) {
           switch (data.type) {
             case Hls.ErrorTypes.NETWORK_ERROR:
-              console.warn('Network error, attempting recovery...');
+              console.log('fatal network error encountered, try to recover');
               hls.startLoad();
-              handleStreamingFailure();
               break;
             case Hls.ErrorTypes.MEDIA_ERROR:
-              console.warn('Media stall or decode error, attempting recovery...');
+              console.log('fatal media error encountered, try to recover');
               hls.recoverMediaError();
               break;
             default:
+              console.log('fatal error, destroying hls instance');
+              hls.destroy();
               handleStreamingFailure();
               break;
           }
+        } else if (data.details === 'levelSwitchError') {
+          // invalid level idx এরর হ্যান্ডেল করার জন্য
+          console.log('Level switch error detected, resetting to auto level');
+          hls.nextLevel = -1; // প্লেয়ারকে আবার ডিফল্ট অটো লেভেলে ব্যাক করাবে
         }
       });
     } else if (video.canPlayType('application/vnd.apple.mpegurl')) {
