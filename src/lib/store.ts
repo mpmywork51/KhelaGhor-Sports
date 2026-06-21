@@ -33,8 +33,13 @@ const DEFAULT_SETTINGS: GlobalSettings = {
   welcomeMessage: "আপনাকে স্বাগতম আমাদের লাইভখেলা ওয়েবসাইটে! সব ধরণের লাইভ খেলা উপভোগ করতে আমাদের সাথেই থাকুন।",
   telegramUrl: "https://t.me/livekhela_official",
   privacyPolicyUrl: "https://livekhela.com/privacy-policy",
-  termsUrl: "https://livekhela.com/terms"
+  termsUrl: "https://livekhela.com/terms",
+  trafficSimulationEnabled: true,
+  simulatedBaselineTraffic: 180
 };
+
+// Module-level cache to keep in-sync settings reference for background simulation threads
+let cachedGlobalSettings: GlobalSettings = { ...DEFAULT_SETTINGS };
 
 // Local storage fallback state if databases are down
 const LOCAL_STORAGE_KEY_MATCHES = 'livekhela_matches';
@@ -149,7 +154,9 @@ async function fetchSettingsFromSupabase(): Promise<GlobalSettings> {
       welcomeMessage: data.welcomeMessage || DEFAULT_SETTINGS.welcomeMessage,
       telegramUrl: data.telegramUrl || DEFAULT_SETTINGS.telegramUrl,
       privacyPolicyUrl: data.privacyPolicyUrl || DEFAULT_SETTINGS.privacyPolicyUrl,
-      termsUrl: data.termsUrl || DEFAULT_SETTINGS.termsUrl
+      termsUrl: data.termsUrl || DEFAULT_SETTINGS.termsUrl,
+      trafficSimulationEnabled: data.trafficSimulationEnabled !== undefined ? !!data.trafficSimulationEnabled : true,
+      simulatedBaselineTraffic: data.simulatedBaselineTraffic !== undefined ? Number(data.simulatedBaselineTraffic) : 180
     };
   } catch (err) {
     console.warn('Supabase fetch global settings failed (table might be unconfigured):', err);
@@ -544,7 +551,9 @@ export function subscribeToSettings(callback: (settings: GlobalSettings) => void
   let isSupabaseActive = false;
 
   const loadFallbackLocal = () => {
-    callback(getLocalData<GlobalSettings>(LOCAL_STORAGE_KEY_SETTINGS, DEFAULT_SETTINGS));
+    const local = getLocalData<GlobalSettings>(LOCAL_STORAGE_KEY_SETTINGS, DEFAULT_SETTINGS);
+    cachedGlobalSettings = local;
+    callback(local);
   };
 
   const startSupabaseFallback = async () => {
@@ -554,6 +563,7 @@ export function subscribeToSettings(callback: (settings: GlobalSettings) => void
 
     try {
       const data = await fetchSettingsFromSupabase();
+      cachedGlobalSettings = data;
       callback(data);
     } catch (e) {
       console.warn('Supabase settings query failed, falling back to local storage', e);
@@ -566,6 +576,7 @@ export function subscribeToSettings(callback: (settings: GlobalSettings) => void
         .on('postgres_changes', { event: '*', schema: 'public', table: 'settings' }, async () => {
           try {
             const data = await fetchSettingsFromSupabase();
+            cachedGlobalSettings = data;
             callback(data);
           } catch (err) {
             console.warn('Supabase real-time settings error, querying Firebase primary...', err);
@@ -588,7 +599,7 @@ export function subscribeToSettings(callback: (settings: GlobalSettings) => void
         unsubFirestore = onSnapshot(settingsDocRef, (snap) => {
           if (snap.exists()) {
             const data = snap.data();
-            callback({
+            const config: GlobalSettings = {
               bannerAdEnabled: !!data.bannerAdEnabled,
               bannerAdCode: data.bannerAdCode || '',
               popunderAdEnabled: !!data.popunderAdEnabled,
@@ -597,8 +608,13 @@ export function subscribeToSettings(callback: (settings: GlobalSettings) => void
               welcomeMessage: data.welcomeMessage || DEFAULT_SETTINGS.welcomeMessage,
               telegramUrl: data.telegramUrl || DEFAULT_SETTINGS.telegramUrl,
               privacyPolicyUrl: data.privacyPolicyUrl || DEFAULT_SETTINGS.privacyPolicyUrl,
-              termsUrl: data.termsUrl || DEFAULT_SETTINGS.termsUrl
-            });
+              termsUrl: data.termsUrl || DEFAULT_SETTINGS.termsUrl,
+              trafficSimulationEnabled: data.trafficSimulationEnabled !== undefined ? !!data.trafficSimulationEnabled : true,
+              simulatedBaselineTraffic: data.simulatedBaselineTraffic !== undefined ? Number(data.simulatedBaselineTraffic) : 180
+            };
+            cachedGlobalSettings = config;
+            setLocalData(LOCAL_STORAGE_KEY_SETTINGS, config);
+            callback(config);
           } else {
             callback(DEFAULT_SETTINGS);
           }
@@ -984,13 +1000,17 @@ export async function updateChannel(id: string, ch: Omit<Channel, 'id' | 'create
 }
 
 export async function saveGlobalSettings(s: GlobalSettings) {
+  const payload = {
+    ...s,
+    trafficSimulationEnabled: s.trafficSimulationEnabled !== undefined ? !!s.trafficSimulationEnabled : true,
+    simulatedBaselineTraffic: s.simulatedBaselineTraffic !== undefined ? Number(s.simulatedBaselineTraffic) : 180,
+    updatedAt: Date.now()
+  };
+
   // 1. Firebase
   if (isFirebaseConfigured && db) {
     try {
-      await setDoc(doc(db, 'settings', 'global'), {
-        ...s,
-        updatedAt: Date.now()
-      });
+      await setDoc(doc(db, 'settings', 'global'), payload);
     } catch (e) {
       console.warn('Firestore settings update failed:', e);
     }
@@ -1000,16 +1020,18 @@ export async function saveGlobalSettings(s: GlobalSettings) {
   try {
     const { error } = await supabase.from('settings').upsert({
       id: 'global',
-      ...s,
-      updatedAt: Date.now()
+      ...payload
     });
     if (error) throw error;
   } catch (e) {
     console.warn('Supabase settings upsert failed:', e);
   }
 
+  // Save in local module cache
+  cachedGlobalSettings = payload;
+
   // 3. LocalStorage
-  setLocalData(LOCAL_STORAGE_KEY_SETTINGS, s);
+  setLocalData(LOCAL_STORAGE_KEY_SETTINGS, payload);
 }
 
 // -----------------------------------------------------------------
@@ -1020,6 +1042,43 @@ export interface ActiveSession {
   lastActive: number;
   platform: 'Android App' | 'Website Browser';
   userAgent: string;
+}
+
+export async function registerUniqueDeviceVisit(isAndroidApp: boolean) {
+  const alreadyRegistered = localStorage.getItem('livekhela_unique_device_registered');
+  if (alreadyRegistered === 'true') return;
+
+  const deviceId = 'visit_' + Math.floor(Math.random() * 10000000) + '_' + Date.now().toString(36);
+  const payload = {
+    id: deviceId,
+    lastActive: Date.now(),
+    platform: isAndroidApp ? 'Android App' : 'Website Browser' as const,
+    userAgent: navigator.userAgent
+  };
+
+  // 1. Firebase write
+  if (isFirebaseConfigured && db) {
+    try {
+      await setDoc(doc(db, 'active_sessions', deviceId), {
+        lastActive: payload.lastActive,
+        platform: payload.platform,
+        userAgent: payload.userAgent,
+        isUniqueVisit: true
+      });
+    } catch (e) {
+      console.warn('Firestore register unique visit failed:', e);
+    }
+  }
+
+  // 2. Supabase write
+  try {
+    await supabase.from('active_sessions').upsert([payload]);
+  } catch (e) {
+    console.warn('Supabase register unique visit failed:', e);
+  }
+
+  // Save registration token to prevent re-counting
+  localStorage.setItem('livekhela_unique_device_registered', 'true');
 }
 
 export async function pingActiveSession(sessionId: string, isAndroidApp: boolean) {
@@ -1075,7 +1134,12 @@ export async function purgeStaleSessions() {
   }
   
   try {
-    const { error } = await supabase.from('active_sessions').delete().lt('lastActive', threshold);
+    // We strictly preserve any lifelong 'visit_' logs so cumulative visitor metrics are NEVER lost!
+    const { error } = await supabase
+      .from('active_sessions')
+      .delete()
+      .lt('lastActive', threshold)
+      .not('id', 'like', 'visit_%');
     if (error) throw error;
   } catch (e) {
     // Fail silently
@@ -1085,6 +1149,62 @@ export async function purgeStaleSessions() {
 export function subscribeToActiveSessions(callback: (sessions: ActiveSession[]) => void) {
   let unsubFirestore: (() => void) | null = null;
   let isFirestoreActive = false;
+  let realDBList: ActiveSession[] = [];
+
+  const publishBlendedList = () => {
+    // Load simulation parameters
+    const simEnabled = cachedGlobalSettings.trafficSimulationEnabled !== false;
+    const simBase = cachedGlobalSettings.simulatedBaselineTraffic || 180;
+
+    if (!simEnabled) {
+      // 100% pure real database metrics only
+      callback(realDBList);
+      return;
+    }
+
+    const blendedList: ActiveSession[] = [...realDBList];
+    const now = Date.now();
+
+    // Generate online mock sessions
+    const onlineCount = Math.floor(simBase * (0.55 + Math.random() * 0.1));
+    const offlineCount = Math.floor(simBase * (0.25 + Math.random() * 0.08));
+
+    for (let i = 0; i < onlineCount; i++) {
+      const isApp = (i % 3) !== 0; // 66% Android App, 33% Web Browser
+      const watchingChannel = i % 5 === 0 ? '🏏 Live Cricket' : i % 3 === 0 ? '⚽ Live Football' : '📺 GTV Live';
+      blendedList.push({
+        id: `mock_online_${i}_${(100 + i).toString(36)}`,
+        lastActive: now - Math.floor(Math.random() * 45000),
+        platform: isApp ? 'Android App' : 'Website Browser',
+        userAgent: isApp ? `LiveKhelaAndroidApp/12.3 (${watchingChannel})` : `Chrome/124.0 (Watching: ${watchingChannel})`
+      });
+    }
+
+    // Generate recent offline/recently departed mock sessions
+    for (let i = 0; i < offlineCount; i++) {
+      const isApp = (i % 2) === 0;
+      blendedList.push({
+        id: `mock_offline_${i}_${(500 + i).toString(36)}`,
+        lastActive: now - (70000 + Math.floor(Math.random() * 800000)),
+        platform: isApp ? 'Android App' : 'Website Browser',
+        userAgent: isApp ? 'LiveKhelaAndroidApp/12.3' : 'Safari/17.4 Desktop'
+      });
+    }
+
+    // Also include a few permanent "visit_" simulator entries to give large lifetime counters
+    const lifetimeSimCount = Math.floor(simBase * 8.5) + realDBList.filter(s => s.id.startsWith('visit_')).length;
+    for (let i = 0; i < lifetimeSimCount; i++) {
+      const isApp = (i % 2) === 0;
+      blendedList.push({
+        id: `visit_mock_${i}_${(1000 + i).toString(36)}`,
+        lastActive: now - (86400000 * (1 + Math.random() * 7)),
+        platform: isApp ? 'Android App' : 'Website Browser',
+        userAgent: isApp ? 'LiveKhelaAndroidApp' : 'Mobile Web Browser'
+      });
+    }
+
+    callback(blendedList);
+  };
 
   const startFirestorePrimary = () => {
     if (isFirebaseConfigured && db) {
@@ -1102,7 +1222,8 @@ export function subscribeToActiveSessions(callback: (sessions: ActiveSession[]) 
               userAgent: data.userAgent || ''
             });
           });
-          callback(list);
+          realDBList = list;
+          publishBlendedList();
         }, (error) => {
           console.warn('Active session subscription query failed:', error);
           isFirestoreActive = false;
@@ -1116,39 +1237,20 @@ export function subscribeToActiveSessions(callback: (sessions: ActiveSession[]) 
 
   startFirestorePrimary();
 
-  // Create fluctuate mock sessions inside local fallback to present continuous gorgeous graphs
-  const mockInterval = setInterval(() => {
-    if (!isFirestoreActive) {
-      const list: ActiveSession[] = [];
-      const now = Date.now();
-      
-      const onlineCount = Math.floor(Math.random() * 30) + 35;
-      for (let i = 0; i < onlineCount; i++) {
-        const isApp = Math.random() > 0.45;
-        list.push({
-          id: `mock_session_online_${i}`,
-          lastActive: now - Math.floor(Math.random() * 45000),
-          platform: isApp ? 'Android App' : 'Website Browser',
-          userAgent: isApp ? 'LiveKhelaAndroidApp/1.0' : 'Mozilla/5.0 Chrome/120'
-        });
-      }
-      
-      const offlineCount = Math.floor(Math.random() * 15) + 10;
-      for (let i = 0; i < offlineCount; i++) {
-        const isApp = Math.random() > 0.45;
-        list.push({
-          id: `mock_session_offline_${i}`,
-          lastActive: now - (60000 + Math.floor(Math.random() * 400000)),
-          platform: isApp ? 'Android App' : 'Website Browser',
-          userAgent: isApp ? 'LiveKhelaAndroidApp/1.0' : 'Mozilla/5.0 Chrome/120'
-        });
-      }
-      callback(list);
-    }
-  }, 6000);
+  // Re-publish list periodically to simulate dynamic fluctuations in numbers
+  const fluctuationInterval = setInterval(() => {
+    publishBlendedList();
+  }, 5000);
+
+  // Re-publish list if settings update locally
+  const localUpdateHandler = () => {
+    publishBlendedList();
+  };
+  window.addEventListener('livekhela_local_update', localUpdateHandler);
 
   return () => {
     if (unsubFirestore) unsubFirestore();
-    clearInterval(mockInterval);
+    clearInterval(fluctuationInterval);
+    window.removeEventListener('livekhela_local_update', localUpdateHandler);
   };
 }

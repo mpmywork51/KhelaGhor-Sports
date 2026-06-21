@@ -55,6 +55,8 @@ export interface GlobalSettings {
   telegramUrl: string;
   privacyPolicyUrl: string;
   termsUrl: string;
+  trafficSimulationEnabled?: boolean;
+  simulatedBaselineTraffic?: number;
 }
 
 export enum NavigationTab {

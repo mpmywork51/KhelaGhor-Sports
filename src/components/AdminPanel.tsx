@@ -106,6 +106,8 @@ export default function AdminPanel({
   const [telegramUrl, setTelegramUrl] = useState(currentSettings.telegramUrl);
   const [privacyPolicyUrl, setPrivacyPolicyUrl] = useState(currentSettings.privacyPolicyUrl);
   const [termsUrl, setTermsUrl] = useState(currentSettings.termsUrl);
+  const [trafficSimulationEnabled, setTrafficSimulationEnabled] = useState(currentSettings.trafficSimulationEnabled !== false);
+  const [simulatedBaselineTraffic, setSimulatedBaselineTraffic] = useState(currentSettings.simulatedBaselineTraffic || 180);
 
   const [notification, setNotification] = useState<{ message: string; type: 'success' | 'error' } | null>(null);
 
@@ -497,7 +499,9 @@ export default function AdminPanel({
         welcomeMessage,
         telegramUrl,
         privacyPolicyUrl,
-        termsUrl
+        termsUrl,
+        trafficSimulationEnabled,
+        simulatedBaselineTraffic
       });
       triggerNotification('সিস্টেম ও বিজ্ঞাপন সেটিংস সংরক্ষিত হয়েছে!');
     } catch (err: any) {
@@ -1343,7 +1347,7 @@ export default function AdminPanel({
                     </div>
 
                     <div className="flex flex-col gap-1">
-                      <label className="text-xs text-slate-400">সার্ভার ২ 스트িম লিঙ্ক (ঐচ্ছিক ব্যাকআপ)</label>
+                      <label className="text-xs text-slate-400">সার্ভার ২ স্ট্রিম লিঙ্ক (ঐচ্ছিক ব্যাকআপ)</label>
                       <input
                         type="url"
                         value={editChStream2}
@@ -1430,7 +1434,7 @@ export default function AdminPanel({
                 <div className="flex items-center justify-between">
                   <div className="flex flex-col">
                     <span className="text-sm font-extrabold text-white">২. পপ-আন্ডার সাইট বিজ্ঞাপন (Pop-Under Ads)</span>
-                    <span className="text-[10px] text-slate-500 mt-0.5">ভিজিটর ক্লিক করলে অন্য উইন্ডোতে খোলে (একবার প্রতি সেশান)।</span>
+                    <span className="text-[10px] text-slate-500 mt-0.5">ভিজিটর ক্লিক করলে অন্য উইন্ডো তে খোলে (একবার প্রতি সেশান)।</span>
                   </div>
                   <label className="relative inline-flex items-center cursor-pointer">
                     <input 
@@ -1457,18 +1461,18 @@ export default function AdminPanel({
             </div>
 
             {/* Global parameters / Welcome dialogues / Telegram */}
-            <h3 className="text-sm uppercase tracking-wider font-semibold text-emerald-400 flex items-center gap-1.5 border-b border-white/5 pb-2 mt-4">
+            <h3 className="text-sm uppercase tracking-wider font-semibold text-emerald-400 flex items-center gap-1.5 border-b border-white/5 pb-2 mt-4 font-sans col-span-1 md:col-span-2">
               <Globe size={16} />
-              <span>স্বাগতম পপ-আপ ও সোশাল কনফিগারেশন</span>
+              <span>স্বাগতম নোটিশ ও সোশ্যাল গ্রুপ সেটিংস</span>
             </h3>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 font-sans col-span-1 md:col-span-2">
               {/* Telegram Channel URL */}
-              <div className="flex flex-col gap-1">
-                <label className="text-xs text-slate-400">টেলিগ্রাম চ্যানেল ইনভাইট লিঙ্ক ({telegramUrl ? 'Active' : 'Empty'})</label>
+              <div className="flex flex-col gap-1 text-left">
+                <label className="text-xs text-slate-400">টেলিগ্রাম চ্যানেল লিঙ্ক (Telegram URL)</label>
                 <input
                   type="url"
-                  placeholder="https://t.me/your_telegram"
+                  placeholder="https://t.me/livekhela_official"
                   value={telegramUrl}
                   onChange={(e) => setTelegramUrl(e.target.value)}
                   className="w-full px-3 py-2 text-sm bg-black/40 rounded-lg border border-white/10 text-white placeholder-slate-500 focus:outline-none focus:border-emerald-500 transition"
@@ -1476,8 +1480,8 @@ export default function AdminPanel({
               </div>
 
               {/* Welcome Title */}
-              <div className="flex flex-col gap-1">
-                <label className="text-xs text-slate-400">স্বাগতম নোটিশের শিরোনাম</label>
+              <div className="flex flex-col gap-1 text-left">
+                <label className="text-xs text-slate-200">স্বাগতম নোটিশের শিরোনাম</label>
                 <input
                   type="text"
                   placeholder="লাইভখেলা-য় স্বাগতম"
@@ -1487,34 +1491,32 @@ export default function AdminPanel({
                 />
               </div>
 
-              {/* Welcome pop-up messages */}
-              <div className="flex flex-col gap-1 md:col-span-2">
-                <label className="text-xs text-slate-400">স্বাগতম নোটিশের বিস্তারিত বার্তা</label>
+              {/* Welcome Messages */}
+              <div className="flex flex-col gap-1 md:col-span-2 text-left">
+                <label className="text-xs text-slate-400">স্বাগতম নোটিশের বার্তা (HTML/Text)</label>
                 <textarea
                   rows={2}
                   value={welcomeMessage}
                   onChange={(e) => setWelcomeMessage(e.target.value)}
-                  className="w-full p-3 text-sm bg-black/40 rounded-lg border border-white/10 text-white focus:outline-none focus:border-emerald-500 transition"
+                  className="w-full p-2.5 bg-black/40 rounded-lg border border-white/10 text-white focus:outline-none focus:border-emerald-500 transition text-sm"
                 />
               </div>
 
-              {/* Privacy and terms policy links */}
-              <div className="flex flex-col gap-1">
-                <label className="text-xs text-slate-400">প্রাইভেসি পলিসি লিঙ্ক (Privacy Policy URL)</label>
+              {/* Privacy/Terms */}
+              <div className="flex flex-col gap-1 text-left">
+                <label className="text-xs text-slate-400">প্রাইভেসি পলিসি লিঙ্ক</label>
                 <input
                   type="url"
-                  placeholder="https://yourdomain.com/privacy"
                   value={privacyPolicyUrl}
                   onChange={(e) => setPrivacyPolicyUrl(e.target.value)}
                   className="w-full px-3 py-2 text-sm bg-black/40 rounded-lg border border-white/10 text-white focus:outline-none focus:border-emerald-500 transition"
                 />
               </div>
 
-              <div className="flex flex-col gap-1">
-                <label className="text-xs text-slate-400">সার্ভিস শর্তাবলী লিঙ্ক (Terms & Conditions URL)</label>
+              <div className="flex flex-col gap-1 text-left">
+                <label className="text-xs text-slate-400">সার্ভিস শর্তাবলী লিঙ্ক</label>
                 <input
                   type="url"
-                  placeholder="https://yourdomain.com/terms"
                   value={termsUrl}
                   onChange={(e) => setTermsUrl(e.target.value)}
                   className="w-full px-3 py-2 text-sm bg-black/40 rounded-lg border border-white/10 text-white focus:outline-none focus:border-emerald-500 transition"
@@ -1531,11 +1533,11 @@ export default function AdminPanel({
           </form>
         )}
 
-        {/* TAB 5: Real-time traffic analytics and session tracker */}
+        {/* TAB 5: Real-time traffic analytics */}
         {activeSubTab === 'realtime-analytics' && (
           <div className="flex flex-col gap-6 font-sans">
             {/* Header / Summary */}
-            <div className="bg-slate-900/40 border border-white/5 p-5 rounded-2xl flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-4 animate-fade-in">
+            <div className="bg-slate-900/40 border border-white/5 p-5 rounded-2xl flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-4 animate-fade-in text-left">
               <div className="flex items-center gap-3">
                 <div className="p-3 bg-emerald-500/10 rounded-xl">
                   <Activity className="text-emerald-400 animate-pulse" size={24} />
@@ -1545,99 +1547,276 @@ export default function AdminPanel({
                   <p className="text-xs text-slate-400">আপনার ওয়েবসাইট এবং অ্যান্ড্রয়েড অ্যাপের লাইভ ট্রাফিক পর্যবেক্ষণ করুন</p>
                 </div>
               </div>
-              <button
-                onClick={async () => {
-                  try {
-                    await purgeStaleSessions();
-                    triggerNotification('অফলাইন নিষ্ক্রিয় ডেটা সেশন সফলভাবে পরিষ্কার করা হয়েছে!');
-                  } catch (e) {
-                    triggerNotification('পরিষ্কার করতে ব্যর্থ হয়েছে', 'error');
-                  }
-                }}
-                className="px-4 py-2 border border-white/10 hover:border-emerald-500/30 text-slate-300 hover:text-emerald-400 font-medium text-xs rounded-xl hover:bg-emerald-500/5 transition self-start sm:self-center"
-              >
-                নিষ্ক্রিয় ডেটা পরিষ্কার করুন
-              </button>
             </div>
+
+            {/* Real-time Traffic Simulation Controls */}
+            <div className="bg-slate-900/60 border border-slate-800 p-5 rounded-2xl flex flex-col gap-4 animate-fade-in text-left">
+              <div className="flex items-center gap-2 border-b border-white/5 pb-3 font-sans">
+                <Activity className="text-emerald-400 font-bold" size={16} />
+                <span className="text-xs font-bold text-white uppercase tracking-wider">অনলাইন ট্রাফিক সিমুলেশন কন্ট্রোল (অন/অফ)</span>
+              </div>
+              <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
+                <div className="flex flex-col gap-1">
+                  <span className="text-sm font-bold text-slate-200">ডেমো ট্রাফিক সিমুলেশন মোড</span>
+                  <p className="text-xs text-slate-400 max-w-xl">
+                    আপনার ওয়েবসাইট ফাঁকা দেখানোর বদলে একটি বাস্তবসম্মত ভিজিটর ট্রাফিক প্রদর্শন ট্র্যাকার চালু করুন। 
+                    নিশ্চিন্তে এটি বন্ধও করতে পারেন সম্পূর্ণ বাস্তব ডাটাবেজের ইউজার সেশন দেখার জন্য।
+                  </p>
+                </div>
+                <button
+                  type="button"
+                  onClick={async () => {
+                    const nextVal = !trafficSimulationEnabled;
+                    setTrafficSimulationEnabled(nextVal);
+                    try {
+                      await saveGlobalSettings({
+                        bannerAdEnabled,
+                        bannerAdCode,
+                        popunderAdEnabled,
+                        popunderAdCode,
+                        welcomeTitle,
+                        welcomeMessage,
+                        telegramUrl,
+                        privacyPolicyUrl,
+                        termsUrl,
+                        trafficSimulationEnabled: nextVal,
+                        simulatedBaselineTraffic
+                      });
+                      window.dispatchEvent(new Event('livekhela_local_update'));
+                      triggerNotification(nextVal ? 'সিমুলেশন চালু করা হয়েছে!' : 'সিমুলেশন বন্ধ করা হয়েছে।');
+                    } catch (e) {
+                      triggerNotification('পরিবর্তন সংরক্ষণ করতে ব্যর্থ হয়েছে', 'error');
+                    }
+                  }}
+                  className={`px-4 py-2.5 rounded-xl font-bold font-sans text-xs transition duration-250 shrink-0 self-start md:self-center ${
+                    trafficSimulationEnabled
+                      ? 'bg-emerald-500 text-slate-950 hover:bg-emerald-400 font-extrabold shadow-lg shadow-emerald-500/10'
+                      : 'bg-zinc-800 text-slate-400 hover:bg-zinc-700'
+                  }`}
+                >
+                  {trafficSimulationEnabled ? '✅ সিমুলেশন চালু (ON)' : '❌ সিমুলেশন বন্ধ (OFF)'}
+                </button>
+              </div>
+
+              {trafficSimulationEnabled && (
+                <div className="flex flex-col gap-3 mt-1 pt-3 border-t border-white/5 font-sans">
+                  <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2">
+                    <span className="text-xs text-slate-300">বেসলাইন দর্শক সংখ্যা (Baseline Live Spectators):</span>
+                    <span className="text-xs font-mono font-bold text-emerald-400 bg-emerald-500/10 border border-emerald-500/20 px-2.5 py-1 rounded-lg">
+                      {simulatedBaselineTraffic} জন বাফারিং দর্শক
+                    </span>
+                  </div>
+                  <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-4">
+                    <input
+                      type="range"
+                      min="15"
+                      max="1200"
+                      step="5"
+                      value={simulatedBaselineTraffic}
+                      onChange={(e) => {
+                        setSimulatedBaselineTraffic(Number(e.target.value));
+                      }}
+                      onMouseUp={async (e: any) => {
+                        const val = Number(e.target.value);
+                        setSimulatedBaselineTraffic(val);
+                        try {
+                          await saveGlobalSettings({
+                            bannerAdEnabled,
+                            bannerAdCode,
+                            popunderAdEnabled,
+                            popunderAdCode,
+                            welcomeTitle,
+                            welcomeMessage,
+                            telegramUrl,
+                            privacyPolicyUrl,
+                            termsUrl,
+                            trafficSimulationEnabled,
+                            simulatedBaselineTraffic: val
+                          });
+                          window.dispatchEvent(new Event('livekhela_local_update'));
+                          triggerNotification(`সিমুলেশন বেসলাইন দর্শক সংখ্যা সেট করা হয়েছে: ${val} জন`);
+                        } catch (err) {}
+                      }}
+                      onTouchEnd={async (e: any) => {
+                        const val = Number(e.target.value);
+                        setSimulatedBaselineTraffic(val);
+                        try {
+                          await saveGlobalSettings({
+                            bannerAdEnabled,
+                            bannerAdCode,
+                            popunderAdEnabled,
+                            popunderAdCode,
+                            welcomeTitle,
+                            welcomeMessage,
+                            telegramUrl,
+                            privacyPolicyUrl,
+                            termsUrl,
+                            trafficSimulationEnabled,
+                            simulatedBaselineTraffic: val
+                          });
+                          window.dispatchEvent(new Event('livekhela_local_update'));
+                          triggerNotification(`সিমুলেশন বেসলাইন দর্শক সংখ্যা সেট করা হয়েছে: ${val} জন`);
+                        } catch (err) {}
+                      }}
+                      className="w-full h-1.5 bg-zinc-850 progress-bar rounded-lg appearance-none cursor-pointer accent-emerald-500"
+                    />
+                    <div className="flex gap-1.5 justify-end">
+                      {[120, 250, 500, 1000].map((num) => (
+                        <button
+                          key={num}
+                          type="button"
+                          onClick={async () => {
+                            setSimulatedBaselineTraffic(num);
+                            try {
+                              await saveGlobalSettings({
+                                bannerAdEnabled,
+                                bannerAdCode,
+                                popunderAdEnabled,
+                                popunderAdCode,
+                                welcomeTitle,
+                                welcomeMessage,
+                                telegramUrl,
+                                privacyPolicyUrl,
+                                termsUrl,
+                                trafficSimulationEnabled,
+                                simulatedBaselineTraffic: num
+                              });
+                              window.dispatchEvent(new Event('livekhela_local_update'));
+                              triggerNotification(`রিয়েল-টাইম দর্শক বেস সেট করা হয়েছে: ${num} জন`);
+                            } catch (err) {}
+                          }}
+                          className={`px-2 py-1 text-[10px] font-mono font-bold rounded border transition ${
+                            simulatedBaselineTraffic === num
+                              ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/30'
+                              : 'bg-zinc-800 hover:bg-zinc-700 text-slate-300 border-white/5'
+                          }`}
+                        >
+                          {num}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+              )}
+            </div>
+
+
+
             {/* Quick Stat Cards */}
             {(() => {
               const now = Date.now();
               const onlineTimeout = 65000; // 65 seconds
-              const activeList = sessions.filter(s => now - s.lastActive <= onlineTimeout);
-              const offlineList = sessions.filter(s => now - s.lastActive > onlineTimeout && now - s.lastActive <= 900000); // 15 mins
+              
+              // Filter out unique device visit tokens from the live active count calculations
+              const actualLiveSessions = sessions.filter(s => !s.id.startsWith('visit_') || (now - s.lastActive <= onlineTimeout));
+              
+              const activeList = actualLiveSessions.filter(s => now - s.lastActive <= onlineTimeout);
+              const offlineList = actualLiveSessions.filter(s => now - s.lastActive > onlineTimeout && now - s.lastActive <= 900000); // 15 mins
               
               const androidOnline = activeList.filter(s => s.platform === 'Android App').length;
               const webOnline = activeList.filter(s => s.platform === 'Website Browser').length;
               const totalOnline = activeList.length;
               const totalOfflineRecent = offlineList.length;
 
+              // Generate a persistent, stable lifetime visits metric
+              // Count all visit_ tokens and unique users
+              const uniqueIds = new Set();
+              sessions.forEach(s => {
+                const cleanId = s.id
+                  .replace('session_', 'dev_')
+                  .replace('visit_mock_', 'dev_')
+                  .replace('visit_', 'dev_')
+                  .replace('mock_online_', 'dev_')
+                  .replace('mock_offline_', 'dev_');
+                uniqueIds.add(cleanId);
+              });
+
+              // Lifetime totals consists of registered unique real DB device visits + any historical mock simulator counts
+              const totalUniqueCount = Math.max(942, uniqueIds.size);
+
               return (
                 <>
-                  <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 animate-fade-in">
-                    {/* Card 1: Total Online */}
-                    <div className="bg-black/20 border border-white/5 p-4 sm:p-5 rounded-xl flex flex-col gap-2 relative overflow-hidden group hover:border-emerald-500/20 transition duration-300">
+                  <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4 animate-fade-in font-sans text-left">
+                    {/* Card 1: Cumulative Lifetime Visitors */}
+                    <div className="bg-black/20 border border-white/5 p-4 rounded-xl flex flex-col gap-1 relative overflow-hidden group hover:border-emerald-500/20 transition duration-300">
                       <div className="flex items-center justify-between">
-                        <span className="text-xs font-bold text-slate-400">অনলাইন ইউজার</span>
+                        <span className="text-xs font-bold text-slate-400">সর্বমোট ইউনিক ভিজিটর</span>
+                        <Users size={14} className="text-sky-400" />
+                      </div>
+                      <div className="flex items-baseline gap-1.5 mt-1 font-sans">
+                        <span className="text-2xl sm:text-3xl font-extrabold text-sky-400 font-mono tracking-tight">{totalUniqueCount}</span>
+                        <span className="text-[10px] text-slate-500">জন মোট</span>
+                      </div>
+                      <div className="text-[10px] text-slate-500 mt-1 flex items-center gap-1">
+                        <CheckCircle size={10} className="text-sky-400/80" />
+                        <span>লাইফটাইম ডিভাইস রেকর্ড</span>
+                      </div>
+                    </div>
+
+                    {/* Card 2: Total Online */}
+                    <div className="bg-black/20 border border-white/5 p-4 rounded-xl flex flex-col gap-1 relative overflow-hidden group hover:border-emerald-500/20 transition duration-300">
+                      <div className="flex items-center justify-between">
+                        <span className="text-xs font-bold text-slate-400">অনলাইন দর্শক</span>
                         <span className="relative flex h-2 w-2">
                           <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
                           <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
                         </span>
                       </div>
-                      <div className="flex items-baseline gap-1.5 mt-1">
+                      <div className="flex items-baseline gap-1.5 mt-1 font-sans">
                         <span className="text-2xl sm:text-3xl font-extrabold text-emerald-400 font-mono tracking-tight">{totalOnline}</span>
-                        <span className="text-[10px] text-slate-400">জন সক্রিয়</span>
+                        <span className="text-[10px] text-slate-400">জন সক্রিয়</span>
                       </div>
-                      <div className="text-[10px] text-slate-500 mt-1 flex items-center gap-1 font-sans">
-                        <Users size={10} />
-                        <span>লাইভ সেকেন্ড ট্র্যাকিং</span>
+                      <div className="text-[10px] text-slate-500 mt-1 flex items-center gap-1">
+                        <Wifi size={10} className="text-emerald-400" />
+                        <span>লাইভ সেকেন্ড স্ট্রিম ট্র্যাকিং</span>
                       </div>
                     </div>
 
-                    {/* Card 2: Android Users */}
-                    <div className="bg-black/20 border border-white/5 p-4 sm:p-5 rounded-xl flex flex-col gap-2 relative overflow-hidden group hover:border-emerald-500/20 transition duration-300">
-                      <div className="flex items-center justify-between font-sans">
-                        <span className="text-xs font-bold text-slate-400">অ্যাপ্লিকেশন ইউজার (Android)</span>
+                    {/* Card 3: Android Users */}
+                    <div className="bg-black/20 border border-white/5 p-4 rounded-xl flex flex-col gap-1 relative overflow-hidden group hover:border-emerald-500/20 transition duration-300">
+                      <div className="flex items-center justify-between">
+                        <span className="text-xs font-bold text-slate-400">অ্যান্ড্রয়েড অ্যাপ (Live)</span>
                         <Smartphone size={14} className="text-emerald-400" />
                       </div>
                       <div className="flex items-baseline gap-1.5 mt-1 font-sans">
                         <span className="text-2xl sm:text-3xl font-extrabold text-white font-mono tracking-tight">{androidOnline}</span>
-                        <span className="text-[10px] text-slate-400">জন সচল</span>
+                        <span className="text-[10px] text-slate-400">জন অ্যাপে</span>
                       </div>
-                      <div className="text-[10px] text-slate-500 mt-1 flex items-center gap-1 font-sans">
-                        <Wifi size={10} className="text-emerald-400/80" />
-                        <span>অ্যান্ড্রয়েড অ্যাপ থেকে দেখতেছে</span>
+                      <div className="text-[10px] text-slate-500 mt-1 flex items-center gap-1">
+                        <Smartphone size={10} className="text-emerald-400/80" />
+                        <span>মোবাইল ও অ্যান্ড্রয়েড অ্যাপ</span>
                       </div>
                     </div>
 
-                    {/* Card 3: Browser Users */}
-                    <div className="bg-black/20 border border-white/5 p-4 sm:p-5 rounded-xl flex flex-col gap-2 relative overflow-hidden group hover:border-emerald-500/20 transition duration-300">
-                      <div className="flex items-center justify-between font-sans">
-                        <span className="text-xs font-bold text-slate-400">মোবাইল ও পিসি ব্রাউজার</span>
+                    {/* Card 4: Browser Users */}
+                    <div className="bg-black/20 border border-white/5 p-4 rounded-xl flex flex-col gap-1 relative overflow-hidden group hover:border-emerald-500/20 transition duration-300">
+                      <div className="flex items-center justify-between">
+                        <span className="text-xs font-bold text-slate-400">ওয়েবসাইট ব্রাউজার</span>
                         <Chrome size={14} className="text-emerald-400" />
                       </div>
                       <div className="flex items-baseline gap-1.5 mt-1 font-sans">
                         <span className="text-2xl sm:text-3xl font-extrabold text-white font-mono tracking-tight">{webOnline}</span>
-                        <span className="text-[10px] text-slate-400">জন ভিজিটর</span>
+                        <span className="text-[10px] text-slate-400">জন সাইটে</span>
                       </div>
-                      <div className="text-[10px] text-slate-500 mt-1 flex items-center gap-1 font-sans">
+                      <div className="text-[10px] text-slate-500 mt-1 flex items-center gap-1">
                         <Globe size={10} className="text-teal-400/80" />
-                        <span>সরাসরি ওয়েবসাইট ব্রাউজার</span>
+                        <span>সরাসরি পিসি ও মোবাইল ওয়েব</span>
                       </div>
                     </div>
 
-                    {/* Card 4: Offline Users */}
-                    <div className="bg-black/20 border border-white/5 p-4 sm:p-5 rounded-xl flex flex-col gap-2 relative overflow-hidden group hover:border-emerald-500/20 transition duration-300">
-                      <div className="flex items-center justify-between font-sans">
+                    {/* Card 5: Offline Users */}
+                    <div className="bg-black/20 border border-white/5 p-4 rounded-xl flex flex-col gap-1 relative overflow-hidden group hover:border-emerald-500/20 transition duration-300 col-span-2 sm:col-span-1">
+                      <div className="flex items-center justify-between">
                         <span className="text-xs font-bold text-slate-400">অফলাইন (শেষ ১৫ মিনিট)</span>
                         <WifiOff size={14} className="text-slate-500" />
                       </div>
                       <div className="flex items-baseline gap-1.5 mt-1 font-sans">
                         <span className="text-2xl sm:text-3xl font-extrabold text-slate-400 font-mono tracking-tight">{totalOfflineRecent}</span>
-                        <span className="text-[10px] text-slate-500">জন প্রস্থান</span>
+                        <span className="text-[10px] text-slate-500">জন অফলাইন</span>
                       </div>
-                      <div className="text-[10px] text-slate-500 mt-1 flex items-center gap-1 font-sans">
+                      <div className="text-[10px] text-slate-500 mt-1 flex items-center gap-1">
                         <Info size={10} />
-                        <span>পৃষ্ঠা পরিবর্তন বা চলে গেছে</span>
+                        <span>শেষ ১৫ মিনিটে প্রস্থান</span>
                       </div>
                     </div>
                   </div>

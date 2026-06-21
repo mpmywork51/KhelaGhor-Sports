@@ -34,6 +34,7 @@ import {
   transitionMatchToLive,
   AUTHORIZED_ADMIN,
   pingActiveSession,
+  registerUniqueDeviceVisit,
 } from './lib/store';
 
 export default function App() {
@@ -48,7 +49,8 @@ export default function App() {
 
     const isAndroidApp = navigator.userAgent.includes('LiveKhelaAndroidApp');
 
-    // Ping session presence immediately
+    // Register persistent unique visit for analytics, then ping active session stream
+    registerUniqueDeviceVisit(isAndroidApp);
     pingActiveSession(sessionId, isAndroidApp);
 
     // Continue pinging on a 40-seconds loop to indicate "still visiting"
