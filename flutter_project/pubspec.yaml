@@ -1,0 +1,40 @@
+name: livekhela_app
+description: "A high-performance live sports streaming application with Firebase and Supabase backup feeds."
+publish_to: 'none'
+
+version: 1.0.0+1
+
+environment:
+  sdk: '>=3.0.0 <4.0.0'
+
+dependencies:
+  flutter:
+    sdk: flutter
+
+  # Icons and Typography
+  cupertino_icons: ^1.0.6
+  google_fonts: ^6.1.0
+  font_awesome_flutter: ^10.7.0
+
+  # Native High-Performance Video Player
+  video_player: ^2.8.2
+  chewie: ^1.7.5
+
+  # Two-way Database Connectors
+  firebase_core: ^2.27.0
+  cloud_firestore: ^4.15.8
+  supabase_flutter: ^2.4.0
+
+  # Optimized Cache and Image loaders
+  cached_network_image: ^3.3.1
+  shimmer: ^3.0.0
+  intl: ^0.19.0
+  url_launcher: ^6.2.5
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^3.0.0
+
+flutter:
+  uses-material-design: true
