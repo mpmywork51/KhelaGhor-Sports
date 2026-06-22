@@ -12,7 +12,8 @@ import {
   Server,
   Maximize2,
   RefreshCw,
-  AlertTriangle
+  AlertTriangle,
+  Settings
 } from 'lucide-react';
 
 interface VideoPlayerProps {
@@ -44,6 +45,10 @@ export default function VideoPlayer({ server1Url, server2Url, server3Url, server
   const [showControls, setShowControls] = useState(true);
   const [isMobile, setIsMobile] = useState(false);
   const [fallbackTriggered, setFallbackTriggered] = useState(false);
+  const [qualityLevels, setQualityLevels] = useState<{ id: number; height: number; name: string }[]>([]);
+  const [currentQualityId, setCurrentQualityId] = useState<number>(-1);
+  const [activeLevelHeight, setActiveLevelHeight] = useState<number | null>(null);
+  const [showQualityMenu, setShowQualityMenu] = useState(false);
   const [useProxy, setUseProxy] = useState<boolean>(() => {
     try {
       const saved = localStorage.getItem('livekhela_use_proxy_v2');
@@ -53,6 +58,13 @@ export default function VideoPlayer({ server1Url, server2Url, server3Url, server
     }
   });
   const controlsTimeoutRef = useRef<number | null>(null);
+
+  // Auto-hide quality menu on controls fade
+  useEffect(() => {
+    if (!showControls) {
+      setShowQualityMenu(false);
+    }
+  }, [showControls]);
 
   const toggleProxy = () => {
     const nextVal = !useProxy;
@@ -169,26 +181,33 @@ export default function VideoPlayer({ server1Url, server2Url, server3Url, server
       const hls = new Hls({
         enableWorker: true,
         lowLatencyMode: true,
-        maxBufferLength: 30,
-        maxMaxBufferLength: 60,
-        liveSyncDuration: 8,
-        liveMaxLatencyDuration: 15,
-        backBufferLength: 90,
-        manifestLoadingTimeOut: 20000,
-        manifestLoadingMaxRetry: 6,
-        levelLoadingTimeOut: 20000,
-        levelLoadingMaxRetry: 6,
+        maxBufferLength: 10,                 // Tight buffer length (10 seconds)
+        maxMaxBufferLength: 15,              // REVERTED to 15 seconds to prevent delays/heavy file accumulation
+        liveSyncDurationCount: 3,            // Keep exactly 3 segments ahead
+        liveSyncDuration: 6,                 // Synced at 6s latency for instant buffering
+        liveMaxLatencyDuration: 10,          // Cap maximum lag at 10 seconds
+        backBufferLength: 10,                // Promptly discard played chunks
+        manifestLoadingTimeOut: 10000,
+        manifestLoadingMaxRetry: 10,
+        manifestLoadingRetryDelay: 500,
+        levelLoadingTimeOut: 10000,
+        levelLoadingMaxRetry: 10,
+        levelLoadingRetryDelay: 500,
+        fragLoadingTimeOut: 10000,
+        fragLoadingMaxRetry: 10,
+        fragLoadingRetryDelay: 500,
         initialLiveManifestSize: 1,
-        maxBufferHole: 0.2,
-        highBufferWatchdogPeriod: 1,
-        nudgeMaxRetry: 12,
-        nudgeMaxRetries: 12,
+        maxBufferHole: 0.5,                  // Jump small buffer holes instantly
+        highBufferWatchdogPeriod: 2,
+        nudgeMaxRetry: 15,                   // Aggressive nudge on stall
         nudgeDuration: 0.1,
         nudgeDelay: 0.1,
         liveDurationInfinity: true,
         autoStartLoad: true,
         capLevelToPlayerSize: true,
-        startLevel: -1, // set to auto-detect for instant starting and fast level-switching
+        startLevel: -1,                      // Native dynamic selection starts immediately on best matching level
+        abrBandWidthFactor: 0.95,            // Fast upscaling bitrate factor
+        abrBandWidthUpFactor: 0.7,
       } as any);
 
       hlsRef.current = hls;
@@ -196,6 +215,22 @@ export default function VideoPlayer({ server1Url, server2Url, server3Url, server
       hls.attachMedia(video);
 
       hls.on(Hls.Events.MANIFEST_PARSED, () => {
+        // Retrieve and format the ABR streams for manual override options
+        if (hls.levels && hls.levels.length > 0) {
+          const formattedLevels = hls.levels.map((level, idx) => {
+            const h = level.height || (level.attrs?.RESOLUTION ? parseInt(level.attrs.RESOLUTION.split('x')[1]) : 0);
+            return {
+              id: idx,
+              height: h,
+              name: h ? `${h}p` : `Stream ${idx + 1}`
+            };
+          }).filter(lvl => lvl.height > 0);
+          
+          // Sort from highest quality down to lowest
+          formattedLevels.sort((a, b) => b.height - a.height);
+          setQualityLevels(formattedLevels);
+        }
+
         video.play()
           .then(() => {
             setIsPlaying(true);
@@ -208,27 +243,45 @@ export default function VideoPlayer({ server1Url, server2Url, server3Url, server
           });
       });
 
+      // Synchronize active level height upon level change to show active ABR status
+      hls.on(Hls.Events.LEVEL_SWITCHED, (event, data) => {
+        if (hls.levels && hls.levels[data.level]) {
+          const activeLevel = hls.levels[data.level];
+          const h = activeLevel.height || (activeLevel.attrs?.RESOLUTION ? parseInt(activeLevel.attrs.RESOLUTION.split('x')[1]) : 0);
+          setActiveLevelHeight(h || null);
+        }
+      });
+
       hls.on(Hls.Events.ERROR, (event, data) => {
+        console.warn(`HLS Player Event Error Detail: ${data.details}`, data);
         if (data.fatal) {
           switch (data.type) {
             case Hls.ErrorTypes.NETWORK_ERROR:
-              console.log('fatal network error encountered, try to recover');
+              console.log('Fatal HLS network error, initiating instant reload recovery...');
               hls.startLoad();
               break;
             case Hls.ErrorTypes.MEDIA_ERROR:
-              console.log('fatal media error encountered, try to recover');
+              console.log('Fatal HLS media error, performing recoverMediaError and nudging...');
               hls.recoverMediaError();
               break;
             default:
-              console.log('fatal error, destroying hls instance');
+              console.log('Fatal unrecoverable error, switching stream server dynamically...');
               hls.destroy();
               handleStreamingFailure();
               break;
           }
         } else if (data.details === 'levelSwitchError') {
-          // invalid level idx এরর হ্যান্ডেল করার জন্য
           console.log('Level switch error detected, resetting to auto level');
-          hls.nextLevel = -1; // প্লেয়ারকে আবার ডিফল্ট অটো লেভেলে ব্যাক করাবে
+          hls.nextLevel = -1;
+        } else {
+          // Non-fatal segment downloading failures: download timeouts/errors
+          if (data.details === Hls.ErrorDetails.FRAG_LOAD_ERROR || 
+              data.details === Hls.ErrorDetails.FRAG_LOAD_TIMEOUT ||
+              data.details === Hls.ErrorDetails.LEVEL_LOAD_ERROR ||
+              data.details === Hls.ErrorDetails.LEVEL_LOAD_TIMEOUT) {
+            console.log('Intercepted segment downloading failure, retrying chunk download stream instantly...');
+            hls.startLoad();
+          }
         }
       });
     } else if (video.canPlayType('application/vnd.apple.mpegurl')) {
@@ -321,6 +374,15 @@ export default function VideoPlayer({ server1Url, server2Url, server3Url, server
     setActiveServer(serverNum);
     setCurrentUrl(nextUrl);
     setFallbackTriggered(false);
+  };
+
+  const handleQualityChange = (levelId: number) => {
+    setCurrentQualityId(levelId);
+    if (hlsRef.current) {
+      hlsRef.current.currentLevel = levelId;
+    }
+    setShowQualityMenu(false);
+    resetControlsTimeout();
   };
 
   const handleVolumeChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -684,6 +746,64 @@ export default function VideoPlayer({ server1Url, server2Url, server3Url, server
             <span className={`w-1.5 h-1.5 rounded-full ${useProxy ? 'bg-emerald-400 animate-pulse' : 'bg-zinc-500'}`} />
             <span>প্রক্সি: {useProxy ? 'চালু' : 'বন্ধ'}</span>
           </button>
+
+          {/* Dynamic quality levels ABR selector */}
+          {qualityLevels.length > 0 && (
+            <div className="relative">
+              <button
+                id="player_quality_toggle"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setShowQualityMenu(!showQualityMenu);
+                }}
+                className="flex items-center gap-1 px-1.5 sm:px-2 py-1.5 rounded-full bg-white/10 border border-white/5 hover:bg-white/20 text-white font-sans text-[10px] sm:text-xs transition active:scale-95 shrink-0"
+                title="ভিডিও কোয়ালিটি"
+              >
+                <Settings size={12} className={`transition-transform duration-300 ${showQualityMenu ? 'rotate-45' : ''}`} />
+                <span>
+                  {currentQualityId === -1 
+                    ? `Auto${activeLevelHeight ? ` (${activeLevelHeight}p)` : ''}` 
+                    : qualityLevels.find(q => q.id === currentQualityId)?.name || 'Auto'}
+                </span>
+              </button>
+
+              {showQualityMenu && (
+                <div 
+                  className="absolute bottom-10 right-0 mb-2 w-32 bg-zinc-950/95 border border-white/10 rounded-xl overflow-hidden shadow-2xl backdrop-blur-xl z-30"
+                  onClick={(e) => e.stopPropagation()}
+                >
+                  <div className="py-1 text-center font-bold text-[9px] sm:text-[10px] text-zinc-500 border-b border-white/5 uppercase select-none">
+                    কোয়ালিটি
+                  </div>
+                  <button
+                    onClick={() => handleQualityChange(-1)}
+                    className={`w-full text-left px-3 py-1.5 text-xs font-sans transition flex items-center justify-between ${
+                      currentQualityId === -1 
+                        ? 'bg-emerald-500 text-black font-semibold' 
+                        : 'text-white hover:bg-white/10'
+                    }`}
+                  >
+                    <span>Auto</span>
+                    {currentQualityId === -1 && <span className="text-[10px]">✓</span>}
+                  </button>
+                  {qualityLevels.map((lvl) => (
+                    <button
+                      key={lvl.id}
+                      onClick={() => handleQualityChange(lvl.id)}
+                      className={`w-full text-left px-3 py-1.5 text-xs font-sans transition flex items-center justify-between ${
+                        currentQualityId === lvl.id 
+                          ? 'bg-emerald-500 text-black font-semibold' 
+                          : 'text-white hover:bg-white/10'
+                      }`}
+                    >
+                      <span>{lvl.name}</span>
+                      {currentQualityId === lvl.id && <span className="text-[10px]">✓</span>}
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
 
           {/* Aspect Ratio Adjustment Toggle button */}
           <button

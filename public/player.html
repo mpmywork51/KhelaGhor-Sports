@@ -400,16 +400,28 @@
         const config = {
           enableWorker: true,
           lowLatencyMode: true,
-          maxBufferLength: 30,         // Keep buffer tight up to 30s to save memory
-          maxMaxBufferLength: 45,
-          liveSyncDuration: 3,         // Low-delay sync duration for immediate action
-          liveMaxLatencyDuration: 6,
-          backBufferLength: 15,        // Drop old played segment buffers promptly
-          manifestLoadingTimeOut: 15000,
-          manifestLoadingMaxRetry: 6,
-          levelLoadingTimeOut: 15000,
-          levelLoadingMaxRetry: 6,
-          maxBufferHole: 0.2
+          maxBufferLength: 10,         // Tight buffer length (10 seconds)
+          maxMaxBufferLength: 15,      // REVERTED back to 15 seconds to prevent delays/heavy file accumulation
+          liveSyncDurationCount: 3,    // Keep exactly 3 segments ahead
+          liveSyncDuration: 6,         // Low-delay sync duration for immediate action
+          liveMaxLatencyDuration: 10,  // Cap maximum lag at 10 seconds
+          backBufferLength: 10,        // Drop old played segment buffers promptly
+          manifestLoadingTimeOut: 10000,
+          manifestLoadingMaxRetry: 10,
+          manifestLoadingRetryDelay: 500,
+          levelLoadingTimeOut: 10000,
+          levelLoadingMaxRetry: 10,
+          levelLoadingRetryDelay: 500,
+          fragLoadingTimeOut: 10000,
+          fragLoadingMaxRetry: 10,
+          fragLoadingRetryDelay: 500,
+          maxBufferHole: 0.5,          // Jump small holes instantly
+          highBufferWatchdogPeriod: 2,
+          nudgeMaxRetry: 15,
+          nudgeDuration: 0.1,
+          nudgeDelay: 0.1,
+          liveDurationInfinity: true,
+          autoStartLoad: true
         };
 
         const hls = new Hls(config);
@@ -424,6 +436,7 @@
         });
 
         hls.on(Hls.Events.ERROR, (event, data) => {
+          console.warn(`HLS Webview Error Detail: ${data.details}`, data);
           if (data.fatal) {
             switch (data.type) {
               case Hls.ErrorTypes.NETWORK_ERROR:
@@ -435,9 +448,19 @@
                 hls.recoverMediaError();
                 break;
               default:
-                console.error("Unrecoverable fatal error:", data);
+                console.error("Unrecoverable fatal error, falling back...");
+                hls.destroy();
                 handleStreamFailureFallback();
                 break;
+            }
+          } else {
+            // Non-fatal fragment download failures
+            if (data.details === Hls.ErrorDetails.FRAG_LOAD_ERROR || 
+                data.details === Hls.ErrorDetails.FRAG_LOAD_TIMEOUT ||
+                data.details === Hls.ErrorDetails.LEVEL_LOAD_ERROR ||
+                data.details === Hls.ErrorDetails.LEVEL_LOAD_TIMEOUT) {
+              console.log("Non-fatal fragment load error. Retrying load instantly...");
+              hls.startLoad();
             }
           }
         });
