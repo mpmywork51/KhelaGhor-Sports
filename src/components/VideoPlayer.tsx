@@ -183,7 +183,6 @@ export default function VideoPlayer({ server1Url, server2Url, server3Url, server
         lowLatencyMode: true,
         maxBufferLength: 10,                 // Tight buffer length (10 seconds)
         maxMaxBufferLength: 15,              // REVERTED to 15 seconds to prevent delays/heavy file accumulation
-        liveSyncDurationCount: 3,            // Keep exactly 3 segments ahead
         liveSyncDuration: 6,                 // Synced at 6s latency for instant buffering
         liveMaxLatencyDuration: 10,          // Cap maximum lag at 10 seconds
         backBufferLength: 10,                // Promptly discard played chunks
