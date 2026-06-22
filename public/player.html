@@ -175,6 +175,81 @@
 
   <!-- Complete Core Integration Logic -->
   <script>
+    // =========================================================================
+    // ANTI-DEBUGGING, SHORTCUT BLOCKER & DEVTOOLS PROTECTION ENGINE
+    // =========================================================================
+    (function() {
+      // 1. Block Context Menu (Right Click)
+      document.addEventListener('contextmenu', function(e) {
+        e.preventDefault();
+      }, false);
+
+      // 2. Block Command/Control Keys and Inspect Shortcuts
+      document.addEventListener('keydown', function(e) {
+        // F12 key
+        if (e.keyCode === 123) {
+          e.preventDefault();
+          triggerRedirect();
+          return false;
+        }
+        // Ctrl+Shift+I or Cmd+Opt+I
+        if (e.ctrlKey && e.shiftKey && e.keyCode === 73) {
+          e.preventDefault();
+          triggerRedirect();
+          return false;
+        }
+        // Ctrl+Shift+J or Cmd+Opt+J
+        if (e.ctrlKey && e.shiftKey && e.keyCode === 74) {
+          e.preventDefault();
+          triggerRedirect();
+          return false;
+        }
+        // Ctrl+U (View Source)
+        if (e.ctrlKey && e.keyCode === 85) {
+          e.preventDefault();
+          triggerRedirect();
+          return false;
+        }
+        // Ctrl+Shift+C (Inspect element)
+        if (e.ctrlKey && e.shiftKey && e.keyCode === 67) {
+          e.preventDefault();
+          triggerRedirect();
+          return false;
+        }
+      }, false);
+
+      // Helper redirect function
+      function triggerRedirect() {
+        window.location.replace("about:blank");
+      }
+
+      // 3. DevTools Detection & Infinite Debugger Protection Loop
+      function startAntiDebugCheck() {
+        function check() {
+          const startTime = performance.now();
+          // Standard debugger trap statement
+          debugger;
+          const endTime = performance.now();
+          
+          // If debugging is active, the debugger statement pauses execution,
+          // causing a significant difference in time.
+          if (endTime - startTime > 100) {
+            triggerRedirect();
+          }
+        }
+        
+        // Loop execution every 200 milliseconds to deter active inspection
+        setInterval(check, 200);
+      }
+
+      // Safe execution initialization
+      try {
+        startAntiDebugCheck();
+      } catch (err) {
+        console.warn(err);
+      }
+    })();
+
     // 1. Database Credentials & Configuration
     const FIREBASE_CONFIG = {
       projectId: "ai-studio-applet-webapp-8d448",
