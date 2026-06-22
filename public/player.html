@@ -1,0 +1,563 @@
+<!DOCTYPE html>
+<html lang="bn">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+  <title>লাইভ স্ট্রিম প্লেয়ার - LiveKhela</title>
+  
+  <!-- CSS imports: Tailwind CSS and Space Grotesk / Inter fonts -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=Space+Grotesk:wght@500;700&display=swap" rel="stylesheet">
+  
+  <!-- Hls.js with native features -->
+  <script src="https://cdn.jsdelivr.net/npm/hls.js@1.4.12/dist/hls.min.js"></script>
+  
+  <!-- official Supabase JS Client library -->
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.39.8/dist/umd/supabase.js"></script>
+
+  <!-- Firebase Compat libraries for seamless offline-first query execution -->
+  <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore-compat.js"></script>
+
+  <style>
+    body {
+      font-family: 'Inter', sans-serif;
+      background-color: #05050a;
+      color: #f8fafc;
+    }
+    .display-font {
+      font-family: 'Space Grotesk', sans-serif;
+    }
+    /* Hide scrollbar */
+    ::-webkit-scrollbar {
+      display: none;
+    }
+    /* Simple spin animation */
+    .spin-loader {
+      border: 4px solid rgba(16, 185, 129, 0.1);
+      border-top: 4px solid #10b981;
+      border-radius: 50%;
+      width: 48px;
+      height: 48px;
+      animation: spin 1s linear infinite;
+    }
+    @keyframes spin {
+      0% { transform: rotate(0deg); }
+      100% { transform: rotate(360deg); }
+    }
+  </style>
+</head>
+<body class="flex flex-col min-h-screen justify-between p-4 sm:p-6 lg:p-8 select-none">
+
+  <!-- Header Section -->
+  <header class="w-full max-w-4xl mx-auto flex items-center justify-between mb-4">
+    <div class="flex items-center gap-3">
+      <div class="w-10 h-10 rounded-xl bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center text-emerald-400">
+        <i class="fa-solid fa-gamepad text-lg"></i>
+      </div>
+      <div>
+        <h1 class="display-font text-sm font-extrabold tracking-wide uppercase text-white">LIVE KHELA</h1>
+        <p class="text-[10px] text-emerald-400 font-semibold tracking-wider uppercase">High-Performance Player</p>
+      </div>
+    </div>
+    
+    <div class="flex items-center gap-2">
+      <span class="flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 text-[10px] font-bold uppercase tracking-wider">
+        <span class="w-1.5 h-1.5 bg-emerald-400 rounded-full animate-ping"></span>
+        লাইভ
+      </span>
+    </div>
+  </header>
+
+  <!-- Main Container -->
+  <main class="w-full max-w-4xl mx-auto flex-1 flex flex-col items-center justify-center gap-4 my-auto">
+    <!-- Channel Information Overlay -->
+    <div class="w-full text-left flex items-center justify-between px-2">
+      <div>
+        <h2 id="channel_title" class="text-lg sm:text-xl font-bold text-white tracking-tight leading-snug">সহজে লোড হচ্ছে...</h2>
+        <p id="stream_source_indicator" class="text-xs text-slate-400 mt-1 flex items-center gap-1.5">
+          <i class="fa-solid fa-database text-sky-400"></i>
+          <span>সংযুক্ত ডাটাবেজ যাচাই করা হচ্ছে...</span>
+        </p>
+      </div>
+      
+      <!-- Multi-Server Selector (Dynamic fallback) -->
+      <div id="server_selectors" class="hidden flex gap-1 p-1 bg-black/40 border border-white/10 rounded-full">
+        <!-- Servers buttons injected here dynamically -->
+      </div>
+    </div>
+
+    <!-- Active Video Player Container -->
+    <div id="player_wrapper" class="relative w-full aspect-video bg-zinc-950 rounded-2xl overflow-hidden border border-white/5 shadow-2xll group">
+      
+      <!-- Native Video Tag -->
+      <video id="video_element" class="w-full h-full object-contain" playsinline preload="auto"></video>
+      
+      <!-- Buffering & Status Overlay -->
+      <div id="loader_overlay" class="absolute inset-0 flex flex-col items-center justify-center bg-black/70 backdrop-blur-sm z-10">
+        <div class="relative flex items-center justify-center">
+          <div class="absolute w-16 h-16 rounded-full border-4 border-emerald-500/20 animate-ping"></div>
+          <div class="spin-loader"></div>
+        </div>
+        <p id="loader_text" class="mt-4 text-emerald-400 text-xs sm:text-sm font-semibold tracking-wide flex items-center gap-1.5">
+          <i class="fa-solid fa-circle-notch animate-spin"></i>
+          চ্যানেল তথ্য লোড হচ্ছে...
+        </p>
+      </div>
+
+      <!-- Play Button Overlay (Big Center Clickable Play Accent) -->
+      <div id="big_play_btn" class="hidden absolute inset-0 flex items-center justify-center bg-black/30 backdrop-blur-[2px] cursor-pointer z-10 transition">
+        <button class="w-14 h-14 rounded-full bg-emerald-500 text-zinc-950 shadow-xl shadow-emerald-500/20 flex items-center justify-center text-xl hover:scale-110 active:scale-95 transition-all duration-300">
+          <i class="fa-solid fa-play ml-1"></i>
+        </button>
+      </div>
+
+      <!-- Control Bars (Responsive Glassmorphic UI) -->
+      <div id="player_controls" class="absolute bottom-0 left-0 right-0 p-4 bg-gradient-to-t from-black/95 to-transparent flex items-center justify-between opacity-0 pointer-events-none group-hover:opacity-100 transition-opacity duration-300 z-20">
+        <div class="flex items-center gap-4">
+          <button id="play_pause_btn" class="text-white hover:text-emerald-400 text-lg transition active:scale-90">
+            <i class="fa-solid fa-pause"></i>
+          </button>
+          
+          <!-- Mute Option & Standard Slider -->
+          <div class="flex items-center gap-2">
+            <button id="mute_btn" class="text-white hover:text-emerald-400 text-lg transition">
+              <i class="fa-solid fa-volume-high"></i>
+            </button>
+            <input id="volume_slider" type="range" min="0" max="1" step="0.05" value="1" class="w-12 sm:w-20 h-1 bg-white/20 rounded-lg appearance-none cursor-pointer accent-emerald-500 focus:outline-none">
+          </div>
+
+          <span class="flex items-center gap-1.5 px-2 py-0.5 rounded bg-rose-600 text-white font-mono text-[9px] font-black uppercase tracking-wider animate-pulse select-none">
+            <span class="w-1 h-1 rounded-full bg-white animate-ping"></span>
+            LIVE
+          </span>
+        </div>
+
+        <div class="flex items-center gap-3">
+          <!-- Force Scale Display mode Toggle -->
+          <button id="scale_btn" class="px-2.5 py-1 rounded-full bg-white/10 hover:bg-white/20 text-white text-[10px] font-semibold border border-white/5 transition active:scale-95 flex items-center gap-1">
+            <i class="fa-solid fa-expand"></i>
+            <span id="scale_text">ফিট</span>
+          </button>
+
+          <!-- Native HTML Fullscreen Toggle -->
+          <button id="fullscreen_btn" class="w-8 h-8 rounded-full bg-white/10 hover:bg-white/20 text-white hover:text-emerald-400 flex items-center justify-center border border-white/5 transition active:scale-90">
+            <i class="fa-solid fa-expand"></i>
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Error/Fallback Warning Panel -->
+    <div id="error_panel" class="hidden w-full bg-rose-950/40 border border-rose-500/20 rounded-2xl p-5 flex flex-col md:flex-row items-center justify-between gap-4 text-center md:text-left">
+      <div class="flex items-center gap-3">
+        <div class="p-3 bg-rose-500/10 rounded-xl text-rose-400">
+          <i class="fa-solid fa-triangle-exclamation text-xl"></i>
+        </div>
+        <div>
+          <h4 class="text-sm font-bold text-white">সম্প্রচার সংযোগ হচ্ছে না?</h4>
+          <p class="text-xs text-rose-300 mt-1">অনুগ্রহ করে ২য় বা ৩য় কোনো সার্ভার সিলেক্ট করুন অথবা প্লেয়ার রিপ্লে করুন।</p>
+        </div>
+      </div>
+      <button onclick="window.location.reload();" class="px-4 py-2 bg-rose-500 text-zinc-950 hover:bg-rose-400 text-xs font-bold rounded-xl transition active:scale-95">
+        <i class="fa-solid fa-arrow-rotate-right mr-1.5 animate-spin-hover"></i>প্লেয়ার রিলোড করুন
+      </button>
+    </div>
+  </main>
+
+  <!-- Footer Section -->
+  <footer class="w-full text-center py-4 mt-6 border-t border-white/5 max-w-4xl mx-auto">
+    <p class="text-xs text-slate-500">
+      &copy; 2026 LiveKhela Offcial. All stream connections processed natively through standard SSL secure layer.
+    </p>
+  </footer>
+
+  <!-- Complete Core Integration Logic -->
+  <script>
+    // 1. Database Credentials & Configuration
+    const FIREBASE_CONFIG = {
+      projectId: "ai-studio-applet-webapp-8d448",
+      appId: "1:335574503712:web:4e68868c18ebb4bde28745",
+      apiKey: "AIzaSyDTkAxAWXf2cC3mBHqUPfh1vmjxqOeRSok",
+      authDomain: "ai-studio-applet-webapp-8d448.firebaseapp.com"
+    };
+    const FIRESTORE_DATABASE_ID = "ai-studio-a6d78bec-83a7-4e50-81fa-adea4f2894ca";
+
+    const SUPABASE_URL = "https://wvwnpnnqijtgupxtodug.supabase.co";
+    const SUPABASE_ANON_KEY = "sb_publishable_2tN_SeBb-0gtUGn5BquZoA_K1AP28aX";
+
+    // 2. State & DOM References
+    let loadedUrls = [];
+    let activeUrlIndex = 0;
+    let hlsInstance = null;
+    let controlsTimer = null;
+    let aspectMode = 'contain';
+
+    const video = document.getElementById('video_element');
+    const titleEl = document.getElementById('channel_title');
+    const indicatorEl = document.getElementById('stream_source_indicator');
+    const loaderOverlay = document.getElementById('loader_overlay');
+    const loaderText = document.getElementById('loader_text');
+    const bigPlayBtn = document.getElementById('big_play_btn');
+    const playerControls = document.getElementById('player_controls');
+    const playPauseBtn = document.getElementById('play_pause_btn');
+    const muteBtn = document.getElementById('mute_btn');
+    const volumeSlider = document.getElementById('volume_slider');
+    const scaleBtn = document.getElementById('scale_btn');
+    const scaleText = document.getElementById('scale_text');
+    const fullscreenBtn = document.getElementById('fullscreen_btn');
+    const serversContainer = document.getElementById('server_selectors');
+    const errorPanel = document.getElementById('error_panel');
+    const wrapper = document.getElementById('player_wrapper');
+
+    // Extract dynamic channel ID from query parameter: ?id=xx or ?channel=xx or ?channelId=xx
+    const urlParams = new URLSearchParams(window.location.search);
+    const channelId = urlParams.get('id') || urlParams.get('channel') || urlParams.get('channelId') || 'Default_Channel_ID';
+
+    // 3. Document Loader logic (Twoway fallback logic)
+    async function loadChannelStreamingLinks() {
+      try {
+        console.log("嘗試首選從 Firebase API 加載...");
+        indicatorEl.innerHTML = `<i class="fa-solid fa-spinner animate-spin text-amber-400"></i> <span>ফায়ারবেস থেকে স্ট্রিম লিংক যাচাই চলছে...</span>`;
+        
+        // Setup Firebase SDK Compat
+        firebase.initializeApp(FIREBASE_CONFIG);
+        const db = firebase.app().firestore(FIRESTORE_DATABASE_ID);
+        
+        const docSnap = await db.collection('channels').doc(channelId).get();
+        if (docSnap.exists) {
+          const data = docSnap.data();
+          console.log("Firebase retrieved successfully:", data);
+          indicatorEl.innerHTML = `<i class="fa-solid fa-circle-check text-emerald-400"></i> <span>সংযুক্ত: Firebase Primary Data Host</span>`;
+          parseStreamData(data);
+          return;
+        } else {
+          // If Firestore document does not exist, trigger Supabase database backup query
+          throw new Error("Channel document empty in Firestore. Fallback path initiated.");
+        }
+      } catch (fbError) {
+        console.warn("Primary Firebase query failed or timed out:", fbError.message);
+        
+        // Trigger Backup Database Connection: SUPABASE Direct Client
+        try {
+          indicatorEl.innerHTML = `<i class="fa-solid fa-shield-halved text-amber-400 animate-pulse"></i> <span>ফায়ারবেস অফলাইন! ব্যাকআপ সুপাবেস কানেক্ট করা হচ্ছে...</span>`;
+          
+          // Connect to Supabase directly using official SDK loaded via CDN
+          const { createClient } = window.supabase;
+          const supabaseClient = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+          
+          const { data, error } = await supabaseClient
+            .from('channels')
+            .select('*')
+            .eq('id', channelId)
+            .single();
+
+          if (error) throw error;
+          if (!data) throw new Error("কোন চ্যানেল পাওয়া যায়নি সুপাবেসে।");
+
+          console.log("Supabase retrieve completed successfully:", data);
+          indicatorEl.innerHTML = `<i class="fa-solid fa-circle-check text-sky-400"></i> <span>সংযুক্ত: Supabase Backup Engine</span>`;
+          parseStreamData(data);
+        } catch (sbError) {
+          console.error("Critical: Dual Backup database engines are offline:", sbError.message);
+          indicatorEl.innerHTML = `<i class="fa-solid fa-circle-exclamation text-rose-500"></i> <span class="text-rose-400 font-bold">সার্ভার ডাউন। ডাটাবেজ এক্সেস ত্রুটি।</span>`;
+          showCriticalError("সম্প্রচার লিঙ্ক লোড করতে ব্যর্থ হয়েছে। অনুগ্রহ করে ইন্টারনেট সংযোগ পরীক্ষা করে পুনরায় লোড করুন।");
+        }
+      }
+    }
+
+    // Helper to evaluate and filter stream URLs 
+    function parseStreamData(data) {
+      titleEl.innerText = data.name || data.title || "লাইভ সম্প্রচার";
+      
+      // Extract every playable stream string field safely
+      const streams = [
+        data.streamUrl1 || data.url || data.server1Url || data.stream_url_1,
+        data.streamUrl2 || data.url2 || data.server2Url || data.stream_url_2,
+        data.streamUrl3 || data.url3 || data.server3Url || data.stream_url_3,
+        data.streamUrl4 || data.url4 || data.server4Url || data.stream_url_4
+      ].filter(u => u && u.trim().startsWith('http'));
+
+      if (streams.length === 0) {
+        showCriticalError("দুঃখিত, ব্রডকাস্টার দ্বারা কোনো সক্রিয় লাইভ লিঙ্ক যোগ করা হয়নি।");
+        return;
+      }
+
+      loadedUrls = streams;
+      activeUrlIndex = 0;
+      
+      // Generate custom server switch selectors
+      serversContainer.innerHTML = '';
+      if (loadedUrls.length > 1) {
+        serversContainer.classList.remove('hidden');
+        loadedUrls.forEach((url, index) => {
+          const btn = document.createElement('button');
+          btn.innerText = `সার্ভার ${index + 1}`;
+          btn.className = `px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase transition tracking-wider ${
+            index === activeUrlIndex ? 'bg-emerald-500 text-zinc-950 shadow-md' : 'text-slate-300 hover:bg-white/10'
+          }`;
+          btn.onclick = () => switchStreamServer(index);
+          serversContainer.appendChild(btn);
+        });
+      }
+
+      initializeStreamingPlayer(loadedUrls[activeUrlIndex]);
+    }
+
+    // 4. Low-latency smooth loading HLS Player implementation
+    function initializeStreamingPlayer(streamUrl) {
+      loaderOverlay.classList.remove('hidden');
+      loaderText.innerHTML = `<i class="fa-solid fa-circle-notch animate-spin text-emerald-400"></i> প্লেব্যাক তৈরি হচ্ছে...`;
+      bigPlayBtn.classList.add('hidden');
+      errorPanel.classList.add('hidden');
+
+      // Stop previous instance cleanly
+      if (hlsInstance) {
+        hlsInstance.destroy();
+        hlsInstance = null;
+      }
+
+      if (Hls.isSupported()) {
+        console.log("Initializing low-latency Native HlsJS Player for Stream:", streamUrl);
+        
+        // Precise parameter settings to prevent buffering on high-traffic channels
+        const config = {
+          enableWorker: true,
+          lowLatencyMode: true,
+          maxBufferLength: 30,         // Keep buffer tight up to 30s to save memory
+          maxMaxBufferLength: 45,
+          liveSyncDuration: 3,         // Low-delay sync duration for immediate action
+          liveMaxLatencyDuration: 6,
+          backBufferLength: 15,        // Drop old played segment buffers promptly
+          manifestLoadingTimeOut: 15000,
+          manifestLoadingMaxRetry: 6,
+          levelLoadingTimeOut: 15000,
+          levelLoadingMaxRetry: 6,
+          maxBufferHole: 0.2
+        };
+
+        const hls = new Hls(config);
+        hlsInstance = hls;
+
+        hls.loadSource(streamUrl);
+        hls.attachMedia(video);
+
+        hls.on(Hls.Events.MANIFEST_PARSED, () => {
+          loaderOverlay.classList.add('hidden');
+          triggerAutoPlay();
+        });
+
+        hls.on(Hls.Events.ERROR, (event, data) => {
+          if (data.fatal) {
+            switch (data.type) {
+              case Hls.ErrorTypes.NETWORK_ERROR:
+                console.warn("Fatal HLS network error, trying to load-recover...");
+                hls.startLoad();
+                break;
+              case Hls.ErrorTypes.MEDIA_ERROR:
+                console.warn("Fatal HLS media error, trying to recoverMediaError...");
+                hls.recoverMediaError();
+                break;
+              default:
+                console.error("Unrecoverable fatal error:", data);
+                handleStreamFailureFallback();
+                break;
+            }
+          }
+        });
+      } else if (video.canPlayType('application/vnd.apple.mpegurl')) {
+        // Native fallback (Safari, iOS device)
+        console.log("Direct iOS Native playback initialized:", streamUrl);
+        video.src = streamUrl;
+        video.addEventListener('loadedmetadata', () => {
+          loaderOverlay.classList.add('hidden');
+          triggerAutoPlay();
+        });
+        video.addEventListener('error', () => {
+          handleStreamFailureFallback();
+        });
+      } else {
+        showCriticalError("আপনার ইন্টারনেট ব্রাউজারটিতে m3u8 লাইভ প্লেব্যাক সমর্থিত নয়।");
+      }
+    }
+
+    // Try starting playback automated
+    function triggerAutoPlay() {
+      video.play()
+        .then(() => {
+          updatePlayPauseIcon(true);
+        })
+        .catch(() => {
+          // Playback blocked, show play icon overlay
+          bigPlayBtn.classList.remove('hidden');
+          updatePlayPauseIcon(false);
+        });
+    }
+
+    // Server-side Failover automatic switching
+    function handleStreamFailureFallback() {
+      if (activeUrlIndex + 1 < loadedUrls.length) {
+        console.warn(`Streaming failed on Server ${activeUrlIndex + 1}. Auto failover starting...`);
+        switchStreamServer(activeUrlIndex + 1);
+      } else {
+        showCriticalError("সম্প্রচার লোড হচ্ছে না। অনুগ্রহ করে কিছুক্ষণ পর আবার চেষ্টা করুন।");
+      }
+    }
+
+    function switchStreamServer(index) {
+      if (index < 0 || index >= loadedUrls.length) return;
+      activeUrlIndex = index;
+      
+      // Re-style server buttons
+      const buttons = serversContainer.querySelectorAll('button');
+      buttons.forEach((btn, idx) => {
+        if (idx === index) {
+          btn.className = "px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase bg-emerald-500 text-zinc-950 shadow-md transition tracking-wider";
+        } else {
+          btn.className = "px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase text-slate-300 hover:bg-white/10 transition tracking-wider";
+        }
+      });
+
+      initializeStreamingPlayer(loadedUrls[index]);
+    }
+
+    // Show visual warning
+    function showCriticalError(message) {
+      loaderOverlay.classList.add('hidden');
+      bigPlayBtn.classList.add('hidden');
+      errorPanel.classList.remove('hidden');
+      
+      const errorMsgEl = errorPanel.querySelector('p');
+      if (errorMsgEl) errorMsgEl.innerText = message;
+    }
+
+    // 5. Controls & Listeners
+    function updatePlayPauseIcon(isPlaying) {
+      const icon = playPauseBtn.querySelector('i');
+      if (isPlaying) {
+        icon.className = 'fa-solid fa-pause';
+      } else {
+        icon.className = 'fa-solid fa-play';
+      }
+    }
+
+    playPauseBtn.onclick = (e) => {
+      e.stopPropagation();
+      if (video.paused) {
+        video.play();
+        updatePlayPauseIcon(true);
+      } else {
+        video.pause();
+        updatePlayPauseIcon(false);
+      }
+      resetControlsTimeout();
+    };
+
+    bigPlayBtn.onclick = () => {
+      video.play();
+      bigPlayBtn.classList.add('hidden');
+      updatePlayPauseIcon(true);
+      resetControlsTimeout();
+    };
+
+    video.onplay = () => updatePlayPauseIcon(true);
+    video.onpause = () => updatePlayPauseIcon(false);
+
+    // Mute/Volume
+    muteBtn.onclick = (e) => {
+      e.stopPropagation();
+      video.muted = !video.muted;
+      const icon = muteBtn.querySelector('i');
+      if (video.muted) {
+        icon.className = 'fa-solid fa-volume-xmark';
+        volumeSlider.value = 0;
+      } else {
+        icon.className = 'fa-solid fa-volume-high';
+        volumeSlider.value = video.volume;
+      }
+      resetControlsTimeout();
+    };
+
+    volumeSlider.oninput = (e) => {
+      e.stopPropagation();
+      const val = parseFloat(e.target.value);
+      video.volume = val;
+      video.muted = (val === 0);
+      const icon = muteBtn.querySelector('i');
+      if (video.muted) {
+        icon.className = 'fa-solid fa-volume-xmark';
+      } else {
+        icon.className = 'fa-solid fa-volume-high';
+      }
+      resetControlsTimeout();
+    };
+
+    // Fullscreen Integration
+    fullscreenBtn.onclick = (e) => {
+      e.stopPropagation();
+      if (!document.fullscreenElement) {
+        if (wrapper.requestFullscreen) {
+          wrapper.requestFullscreen();
+        } else if (wrapper.webkitRequestFullscreen) {
+          wrapper.webkitRequestFullscreen();
+        }
+      } else {
+        if (document.exitFullscreen) {
+          document.exitFullscreen();
+        }
+      }
+      resetControlsTimeout();
+    };
+
+    // Toggle aspect states
+    scaleBtn.onclick = (e) => {
+      e.stopPropagation();
+      if (aspectMode === 'contain') {
+        aspectMode = 'cover';
+        video.className = 'w-full h-full object-cover';
+        scaleText.innerHTML = 'জুম';
+      } else if (aspectMode === 'cover') {
+        aspectMode = 'stretch';
+        video.className = 'w-full h-full object-fill';
+        scaleText.innerHTML = 'ফুল';
+      } else {
+        aspectMode = 'contain';
+        video.className = 'w-full h-full object-contain';
+        scaleText.innerHTML = 'ফিট';
+      }
+      resetControlsTimeout();
+    };
+
+    // Auto-hide controls
+    function resetControlsTimeout() {
+      playerControls.classList.remove('opacity-0', 'pointer-events-none');
+      playerControls.classList.add('opacity-100');
+      
+      if (controlsTimer) clearTimeout(controlsTimer);
+      controlsTimer = setTimeout(() => {
+        if (!video.paused) {
+          playerControls.classList.remove('opacity-100');
+          playerControls.classList.add('opacity-0', 'pointer-events-none');
+        }
+      }, 3500);
+    }
+
+    wrapper.onmousemove = resetControlsTimeout;
+    wrapper.onclick = () => {
+      if (playerControls.classList.contains('opacity-0')) {
+        resetControlsTimeout();
+      } else {
+        playerControls.classList.remove('opacity-100');
+        playerControls.classList.add('opacity-0', 'pointer-events-none');
+        if (controlsTimer) clearTimeout(controlsTimer);
+      }
+    };
+
+    // Start everything on load
+    window.onload = () => {
+      loadChannelStreamingLinks();
+    };
+  </script>
+</body>
+</html>
