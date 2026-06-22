@@ -180,12 +180,13 @@ export default function VideoPlayer({ server1Url, server2Url, server3Url, server
     if (Hls.isSupported()) {
       const hls = new Hls({
         enableWorker: true,
+        enableSoftwareAES: false,           // Utilize native Web Crypto hardware APIs instead of software CPU decryption
         lowLatencyMode: true,
-        maxBufferLength: 10,                 // Tight buffer length (10 seconds)
-        maxMaxBufferLength: 15,              // REVERTED to 15 seconds to prevent delays/heavy file accumulation
-        liveSyncDuration: 6,                 // Synced at 6s latency for instant buffering
-        liveMaxLatencyDuration: 10,          // Cap maximum lag at 10 seconds
-        backBufferLength: 10,                // Promptly discard played chunks
+        maxBufferLength: 5,                  // Optimized tight buffer length (5 seconds)
+        maxMaxBufferLength: 8,               // Restrict maximum buffer accumulation to pre-emptively prevent lag
+        liveSyncDuration: 3,                 // Fast sync latency (3 seconds) for responsive channel loading
+        liveMaxLatencyDuration: 6,           // Cap maximum latency at 6 seconds
+        backBufferLength: 5,                 // Discard played chunks aggressively to save CPU/GPU memory footprint
         manifestLoadingTimeOut: 10000,
         manifestLoadingMaxRetry: 10,
         manifestLoadingRetryDelay: 500,
@@ -203,7 +204,7 @@ export default function VideoPlayer({ server1Url, server2Url, server3Url, server
         nudgeDelay: 0.1,
         liveDurationInfinity: true,
         autoStartLoad: true,
-        capLevelToPlayerSize: true,
+        capLevelToPlayerSize: true,          // Automatically scale resolution level to container size for hardware conservation
         startLevel: -1,                      // Native dynamic selection starts immediately on best matching level
         abrBandWidthFactor: 0.95,            // Fast upscaling bitrate factor
         abrBandWidthUpFactor: 0.7,

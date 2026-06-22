@@ -399,12 +399,13 @@
         // Precise parameter settings to prevent buffering on high-traffic channels
         const config = {
           enableWorker: true,
+          enableSoftwareAES: false,    // Use hardware web crypto decoder instead of pure javascript fallback
           lowLatencyMode: true,
-          maxBufferLength: 10,         // Tight buffer length (10 seconds)
-          maxMaxBufferLength: 15,      // REVERTED back to 15 seconds to prevent delays/heavy file accumulation
-          liveSyncDuration: 6,         // Low-delay sync duration for immediate action
-          liveMaxLatencyDuration: 10,  // Cap maximum lag at 10 seconds
-          backBufferLength: 10,        // Drop old played segment buffers promptly
+          maxBufferLength: 5,          // Tight buffer length (5 seconds)
+          maxMaxBufferLength: 8,       // Restrict maximum buffer accumulation to pre-emptively prevent lag
+          liveSyncDuration: 3,         // Low-delay sync duration (3 seconds) for immediate action
+          liveMaxLatencyDuration: 6,   // Cap maximum latency at 6 seconds
+          backBufferLength: 5,         // Drop old played segment buffers promptly
           manifestLoadingTimeOut: 10000,
           manifestLoadingMaxRetry: 10,
           manifestLoadingRetryDelay: 500,
@@ -420,6 +421,7 @@
           nudgeDuration: 0.1,
           nudgeDelay: 0.1,
           liveDurationInfinity: true,
+          capLevelToPlayerSize: true,  // Save decoding processing load by capping resolution matching player dimensions
           autoStartLoad: true
         };
 
