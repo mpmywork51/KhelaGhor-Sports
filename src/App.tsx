@@ -35,6 +35,7 @@ import {
   AUTHORIZED_ADMIN,
   pingActiveSession,
   registerUniqueDeviceVisit,
+  incrementPageVisit,
 } from './lib/store';
 
 export default function App() {
@@ -49,7 +50,8 @@ export default function App() {
 
     const isAndroidApp = navigator.userAgent.includes('LiveKhelaAndroidApp');
 
-    // Register persistent unique visit for analytics, then ping active session stream
+    // Record correct user visit & update live pings
+    incrementPageVisit();
     registerUniqueDeviceVisit(isAndroidApp);
     pingActiveSession(sessionId, isAndroidApp);
 

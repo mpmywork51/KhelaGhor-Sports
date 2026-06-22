@@ -57,6 +57,7 @@ export interface GlobalSettings {
   termsUrl: string;
   trafficSimulationEnabled?: boolean;
   simulatedBaselineTraffic?: number;
+  totalVisits?: number;
 }
 
 export enum NavigationTab {

@@ -1549,155 +1549,21 @@ export default function AdminPanel({
               </div>
             </div>
 
-            {/* Real-time Traffic Simulation Controls */}
-            <div className="bg-slate-900/60 border border-slate-800 p-5 rounded-2xl flex flex-col gap-4 animate-fade-in text-left">
-              <div className="flex items-center gap-2 border-b border-white/5 pb-3 font-sans">
-                <Activity className="text-emerald-400 font-bold" size={16} />
-                <span className="text-xs font-bold text-white uppercase tracking-wider">অনলাইন ট্রাফিক সিমুলেশন কন্ট্রোল (অন/অফ)</span>
-              </div>
-              <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
-                <div className="flex flex-col gap-1">
-                  <span className="text-sm font-bold text-slate-200">ডেমো ট্রাফিক সিমুলেশন মোড</span>
-                  <p className="text-xs text-slate-400 max-w-xl">
-                    আপনার ওয়েবসাইট ফাঁকা দেখানোর বদলে একটি বাস্তবসম্মত ভিজিটর ট্রাফিক প্রদর্শন ট্র্যাকার চালু করুন। 
-                    নিশ্চিন্তে এটি বন্ধও করতে পারেন সম্পূর্ণ বাস্তব ডাটাবেজের ইউজার সেশন দেখার জন্য।
-                  </p>
+            {/* Real-time Tracker Status Banner */}
+            <div className="bg-emerald-500/5 border border-emerald-500/20 p-5 rounded-2xl flex flex-col sm:flex-row items-center justify-between gap-4 animate-fade-in text-left font-sans">
+              <div className="flex items-center gap-3">
+                <div className="p-3 bg-emerald-500/10 rounded-xl text-emerald-400">
+                  <CheckCircle size={24} />
                 </div>
-                <button
-                  type="button"
-                  onClick={async () => {
-                    const nextVal = !trafficSimulationEnabled;
-                    setTrafficSimulationEnabled(nextVal);
-                    try {
-                      await saveGlobalSettings({
-                        bannerAdEnabled,
-                        bannerAdCode,
-                        popunderAdEnabled,
-                        popunderAdCode,
-                        welcomeTitle,
-                        welcomeMessage,
-                        telegramUrl,
-                        privacyPolicyUrl,
-                        termsUrl,
-                        trafficSimulationEnabled: nextVal,
-                        simulatedBaselineTraffic
-                      });
-                      window.dispatchEvent(new Event('livekhela_local_update'));
-                      triggerNotification(nextVal ? 'সিমুলেশন চালু করা হয়েছে!' : 'সিমুলেশন বন্ধ করা হয়েছে।');
-                    } catch (e) {
-                      triggerNotification('পরিবর্তন সংরক্ষণ করতে ব্যর্থ হয়েছে', 'error');
-                    }
-                  }}
-                  className={`px-4 py-2.5 rounded-xl font-bold font-sans text-xs transition duration-250 shrink-0 self-start md:self-center ${
-                    trafficSimulationEnabled
-                      ? 'bg-emerald-500 text-slate-950 hover:bg-emerald-400 font-extrabold shadow-lg shadow-emerald-500/10'
-                      : 'bg-zinc-800 text-slate-400 hover:bg-zinc-700'
-                  }`}
-                >
-                  {trafficSimulationEnabled ? '✅ সিমুলেশন চালু (ON)' : '❌ সিমুলেশন বন্ধ (OFF)'}
-                </button>
-              </div>
-
-              {trafficSimulationEnabled && (
-                <div className="flex flex-col gap-3 mt-1 pt-3 border-t border-white/5 font-sans">
-                  <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2">
-                    <span className="text-xs text-slate-300">বেসলাইন দর্শক সংখ্যা (Baseline Live Spectators):</span>
-                    <span className="text-xs font-mono font-bold text-emerald-400 bg-emerald-500/10 border border-emerald-500/20 px-2.5 py-1 rounded-lg">
-                      {simulatedBaselineTraffic} জন বাফারিং দর্শক
-                    </span>
-                  </div>
-                  <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-4">
-                    <input
-                      type="range"
-                      min="15"
-                      max="1200"
-                      step="5"
-                      value={simulatedBaselineTraffic}
-                      onChange={(e) => {
-                        setSimulatedBaselineTraffic(Number(e.target.value));
-                      }}
-                      onMouseUp={async (e: any) => {
-                        const val = Number(e.target.value);
-                        setSimulatedBaselineTraffic(val);
-                        try {
-                          await saveGlobalSettings({
-                            bannerAdEnabled,
-                            bannerAdCode,
-                            popunderAdEnabled,
-                            popunderAdCode,
-                            welcomeTitle,
-                            welcomeMessage,
-                            telegramUrl,
-                            privacyPolicyUrl,
-                            termsUrl,
-                            trafficSimulationEnabled,
-                            simulatedBaselineTraffic: val
-                          });
-                          window.dispatchEvent(new Event('livekhela_local_update'));
-                          triggerNotification(`সিমুলেশন বেসলাইন দর্শক সংখ্যা সেট করা হয়েছে: ${val} জন`);
-                        } catch (err) {}
-                      }}
-                      onTouchEnd={async (e: any) => {
-                        const val = Number(e.target.value);
-                        setSimulatedBaselineTraffic(val);
-                        try {
-                          await saveGlobalSettings({
-                            bannerAdEnabled,
-                            bannerAdCode,
-                            popunderAdEnabled,
-                            popunderAdCode,
-                            welcomeTitle,
-                            welcomeMessage,
-                            telegramUrl,
-                            privacyPolicyUrl,
-                            termsUrl,
-                            trafficSimulationEnabled,
-                            simulatedBaselineTraffic: val
-                          });
-                          window.dispatchEvent(new Event('livekhela_local_update'));
-                          triggerNotification(`সিমুলেশন বেসলাইন দর্শক সংখ্যা সেট করা হয়েছে: ${val} জন`);
-                        } catch (err) {}
-                      }}
-                      className="w-full h-1.5 bg-zinc-850 progress-bar rounded-lg appearance-none cursor-pointer accent-emerald-500"
-                    />
-                    <div className="flex gap-1.5 justify-end">
-                      {[120, 250, 500, 1000].map((num) => (
-                        <button
-                          key={num}
-                          type="button"
-                          onClick={async () => {
-                            setSimulatedBaselineTraffic(num);
-                            try {
-                              await saveGlobalSettings({
-                                bannerAdEnabled,
-                                bannerAdCode,
-                                popunderAdEnabled,
-                                popunderAdCode,
-                                welcomeTitle,
-                                welcomeMessage,
-                                telegramUrl,
-                                privacyPolicyUrl,
-                                termsUrl,
-                                trafficSimulationEnabled,
-                                simulatedBaselineTraffic: num
-                              });
-                              window.dispatchEvent(new Event('livekhela_local_update'));
-                              triggerNotification(`রিয়েল-টাইম দর্শক বেস সেট করা হয়েছে: ${num} জন`);
-                            } catch (err) {}
-                          }}
-                          className={`px-2 py-1 text-[10px] font-mono font-bold rounded border transition ${
-                            simulatedBaselineTraffic === num
-                              ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/30'
-                              : 'bg-zinc-800 hover:bg-zinc-700 text-slate-300 border-white/5'
-                          }`}
-                        >
-                          {num}
-                        </button>
-                      ))}
-                    </div>
-                  </div>
+                <div>
+                  <h4 className="text-sm font-extrabold text-white">প্রকৃত রিয়েল-টাইম ট্র্যাকিং সক্রিয় রয়েছে</h4>
+                  <p className="text-xs text-slate-400 mt-0.5">সব ধরণের ফেক ট্র্যাকার বা সিমুলেশন বন্ধ করে সরাসরি ডাটাবেজের সঠিক ইউজার সেশন রিয়েল-টাইম গণনা করা হচ্ছে।</p>
                 </div>
-              )}
+              </div>
+              <div className="px-3.5 py-1.5 rounded-full text-xs font-bold font-sans bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 flex items-center gap-1.5 self-start sm:self-auto uppercase tracking-wide">
+                <span className="w-1.5 h-1.5 bg-emerald-400 rounded-full animate-pulse"></span>
+                <span>১০০% রিয়েল লাইভ ডাটা</span>
+              </div>
             </div>
 
 
@@ -1731,8 +1597,8 @@ export default function AdminPanel({
                 uniqueIds.add(cleanId);
               });
 
-              // Lifetime totals consists of registered unique real DB device visits + any historical mock simulator counts
-              const totalUniqueCount = Math.max(942, uniqueIds.size);
+              // Lifetime totals consists of registered unique real DB device visits
+              const totalUniqueCount = currentSettings.totalVisits !== undefined ? currentSettings.totalVisits : uniqueIds.size;
 
               return (
                 <>
@@ -1740,7 +1606,7 @@ export default function AdminPanel({
                     {/* Card 1: Cumulative Lifetime Visitors */}
                     <div className="bg-black/20 border border-white/5 p-4 rounded-xl flex flex-col gap-1 relative overflow-hidden group hover:border-emerald-500/20 transition duration-300">
                       <div className="flex items-center justify-between">
-                        <span className="text-xs font-bold text-slate-400">সর্বমোট ইউনিক ভিজিটর</span>
+                        <span className="text-xs font-bold text-slate-400">সর্বমোট ভিজিটর কাউন্ট</span>
                         <Users size={14} className="text-sky-400" />
                       </div>
                       <div className="flex items-baseline gap-1.5 mt-1 font-sans">
@@ -1749,7 +1615,7 @@ export default function AdminPanel({
                       </div>
                       <div className="text-[10px] text-slate-500 mt-1 flex items-center gap-1">
                         <CheckCircle size={10} className="text-sky-400/80" />
-                        <span>লাইফটাইম ডিভাইস রেকর্ড</span>
+                        <span>প্রকৃত রিয়েল ভিজিটর ট্র্যাকিং</span>
                       </div>
                     </div>
 
