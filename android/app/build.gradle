@@ -3,11 +3,11 @@ plugins {
 }
 
 android {
-    namespace 'com.khelaghor.sports'
+    namespace 'com.livekhela.sports'
     compileSdk 34
 
     defaultConfig {
-        applicationId "com.khelaghor.sports"
+        applicationId "com.livekhela.sports"
         minSdk 21
         targetSdk 34
         versionCode 1

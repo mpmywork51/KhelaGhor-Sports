@@ -11,7 +11,7 @@
         android:icon="@android:drawable/sym_def_app_icon"
         android:label="@string/app_name"
         android:supportsRtl="true"
-        android:theme="@style/Theme.KhelaGhor"
+        android:theme="@style/Theme.LiveKhela"
         android:hardwareAccelerated="true"
         android:usesCleartextTraffic="true"> <!-- Essential to support HTTP streams -->
         

@@ -854,7 +854,7 @@ class _LivePlayerScreenState extends State<LivePlayerScreen> {
       _videoPlayerController = VideoPlayerController.networkUrl(
         Uri.parse(sourceUrl),
         httpHeaders: const {
-          'User-Agent': 'Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/114.0.0.0 Mobile Safari/537.36 KhelaghorAndroidApp/1.0',
+          'User-Agent': 'Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/114.0.0.0 Mobile Safari/537.36 LiveKhelaAndroidApp/1.0',
         },
       );
 
