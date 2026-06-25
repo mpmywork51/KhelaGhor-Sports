@@ -43,7 +43,7 @@ export default function VideoPlayer({ server1Url, server2Url, server3Url, server
   const [volume, setVolume] = useState(1);
   const [isMuted, setIsMuted] = useState(false);
   const [isFullscreen, setIsFullscreen] = useState(false);
-  const [aspectRatio, setAspectRatio] = useState<AspectRatioMode>('contain');
+  const [aspectRatio, setAspectRatio] = useState<AspectRatioMode>('stretch');
   const [showControls, setShowControls] = useState(true);
   const [isMobile, setIsMobile] = useState(false);
   const [fallbackTriggered, setFallbackTriggered] = useState(false);
@@ -456,7 +456,7 @@ export default function VideoPlayer({ server1Url, server2Url, server3Url, server
   };
 
   const cycleAspectRatio = () => {
-    const modes: AspectRatioMode[] = ['contain', 'cover', 'stretch'];
+    const modes: AspectRatioMode[] = ['stretch', 'cover', 'contain'];
     const currentIndex = modes.indexOf(aspectRatio);
     const nextIndex = (currentIndex + 1) % modes.length;
     setAspectRatio(modes[nextIndex]);
@@ -615,59 +615,130 @@ export default function VideoPlayer({ server1Url, server2Url, server3Url, server
           {title}
         </h3>
 
-        {/* Complete Server Failover Selectors (Compact text code names: S1, S2, S3, S4) */}
-        <div className="flex gap-0.5 bg-black/50 p-0.5 rounded-full border border-white/10 backdrop-blur-md scale-95">
-          {server1Url && (
-            <button
-              id="switch_srv_1"
-              onClick={() => handleManualServerSwitch(1)}
-              className={`px-2 py-0.5 text-[10px] rounded-full transition-all tracking-wider font-extrabold ${
-                activeServer === 1 
-                  ? 'bg-emerald-500 text-black shadow-sm' 
-                  : 'text-white/80 hover:bg-white/10'
-              }`}
-            >
-               S1
-            </button>
-          )}
-          {server2Url && (
-            <button
-              id="switch_srv_2"
-              onClick={() => handleManualServerSwitch(2)}
-              className={`px-2 py-0.5 text-[10px] rounded-full transition-all tracking-wider font-extrabold ${
-                activeServer === 2 
-                  ? 'bg-emerald-500 text-black shadow-sm' 
-                  : 'text-white/80 hover:bg-white/10'
-              }`}
-            >
-               S2
-            </button>
-          )}
-          {server3Url && (
-            <button
-              id="switch_srv_3"
-              onClick={() => handleManualServerSwitch(3)}
-              className={`px-2 py-0.5 text-[10px] rounded-full transition-all tracking-wider font-extrabold ${
-                activeServer === 3 
-                  ? 'bg-emerald-500 text-black shadow-sm' 
-                  : 'text-white/80 hover:bg-white/10'
-              }`}
-            >
-               S3
-            </button>
-          )}
-          {server4Url && (
-            <button
-              id="switch_srv_4"
-              onClick={() => handleManualServerSwitch(4)}
-              className={`px-2 py-0.5 text-[10px] rounded-full transition-all tracking-wider font-extrabold ${
-                activeServer === 4 
-                  ? 'bg-emerald-500 text-black shadow-sm' 
-                  : 'text-white/80 hover:bg-white/10'
-              }`}
-            >
-               S4
-            </button>
+        {/* Complete Server Failover Selectors with Proxy and Quality integrations */}
+        <div className="flex items-center gap-1.5 sm:gap-2">
+          {/* Compact VPN / Proxy Toggle Button with Shield Icon */}
+          <button
+            id="player_proxy_toggle"
+            onClick={toggleProxy}
+            className={`flex items-center gap-1 px-2 py-0.5 rounded-full border backdrop-blur-md transition-all duration-300 active:scale-95 text-[10px] sm:text-xs font-sans font-black shrink-0 ${
+              useProxy 
+                ? 'bg-emerald-500/20 text-emerald-300 border-emerald-500/35 shadow-md shadow-emerald-500/5' 
+                : 'bg-white/5 border-white/10 text-white hover:bg-white/10'
+            }`}
+            title={useProxy ? "প্রক্সি চালু (ON)" : "প্রক্সি বন্ধ (OFF)"}
+          >
+            <Shield size={11} className={useProxy ? 'fill-emerald-400/20 text-emerald-300 animate-pulse' : 'text-white/60'} />
+            <span className="tracking-wide text-[9px] sm:text-[10px]">{useProxy ? 'ON' : 'OFF'}</span>
+          </button>
+
+          {/* S1-S4 Server Selectors */}
+          <div className="flex gap-0.5 bg-white/5 p-0.5 rounded-full border border-white/10 backdrop-blur-md scale-95 shadow-md">
+            {server1Url && (
+              <button
+                id="switch_srv_1"
+                onClick={() => handleManualServerSwitch(1)}
+                className={`px-2 py-0.5 text-[10px] rounded-full transition-all tracking-wider font-extrabold ${
+                  activeServer === 1 
+                    ? 'bg-emerald-500/25 border border-emerald-500/35 text-emerald-300 shadow-sm shadow-emerald-500/5' 
+                    : 'bg-transparent border border-transparent text-white/70 hover:bg-white/10'
+                }`}
+              >
+                 S1
+              </button>
+            )}
+            {server2Url && (
+              <button
+                id="switch_srv_2"
+                onClick={() => handleManualServerSwitch(2)}
+                className={`px-2 py-0.5 text-[10px] rounded-full transition-all tracking-wider font-extrabold ${
+                  activeServer === 2 
+                    ? 'bg-emerald-500/25 border border-emerald-500/35 text-emerald-300 shadow-sm shadow-emerald-500/5' 
+                    : 'bg-transparent border border-transparent text-white/70 hover:bg-white/10'
+                }`}
+              >
+                 S2
+              </button>
+            )}
+            {server3Url && (
+              <button
+                id="switch_srv_3"
+                onClick={() => handleManualServerSwitch(3)}
+                className={`px-2 py-0.5 text-[10px] rounded-full transition-all tracking-wider font-extrabold ${
+                  activeServer === 3 
+                    ? 'bg-emerald-500/25 border border-emerald-500/35 text-emerald-300 shadow-sm shadow-emerald-500/5' 
+                    : 'bg-transparent border border-transparent text-white/70 hover:bg-white/10'
+                }`}
+              >
+                 S3
+              </button>
+            )}
+            {server4Url && (
+              <button
+                id="switch_srv_4"
+                onClick={() => handleManualServerSwitch(4)}
+                className={`px-2 py-0.5 text-[10px] rounded-full transition-all tracking-wider font-extrabold ${
+                  activeServer === 4 
+                    ? 'bg-emerald-500/25 border border-emerald-500/35 text-emerald-300 shadow-sm shadow-emerald-500/5' 
+                    : 'bg-transparent border border-transparent text-white/70 hover:bg-white/10'
+                }`}
+              >
+                 S4
+              </button>
+            )}
+          </div>
+
+          {/* Dynamic quality levels ABR selector */}
+          {qualityLevels.length > 0 && (
+            <div className="relative">
+              <button
+                id="player_quality_toggle"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setShowQualityMenu(!showQualityMenu);
+                }}
+                className="flex items-center justify-center p-1.5 sm:p-2 rounded-full bg-white/5 border border-white/10 hover:bg-white/10 text-white transition active:scale-95 shrink-0"
+                title="ভিডিও কোয়ালিটি"
+              >
+                <Settings size={14} className={`transition-transform duration-300 ${showQualityMenu ? 'rotate-45 text-emerald-400' : ''}`} />
+              </button>
+
+              {showQualityMenu && (
+                <div 
+                  className="absolute top-10 right-0 mt-2 w-32 bg-black/85 border border-white/15 rounded-xl overflow-hidden shadow-2xl backdrop-blur-xl z-30"
+                  onClick={(e) => e.stopPropagation()}
+                >
+                  <div className="py-1 text-center font-bold text-[9px] sm:text-[10px] text-zinc-400 border-b border-white/10 uppercase select-none">
+                    কোয়ালিটি
+                  </div>
+                  <button
+                    onClick={() => handleQualityChange(-1)}
+                    className={`w-full text-left px-3 py-1.5 text-xs font-sans transition flex items-center justify-between ${
+                      currentQualityId === -1 
+                        ? 'bg-emerald-500/20 text-emerald-300 font-semibold border-l-2 border-emerald-400' 
+                        : 'text-white/80 hover:bg-white/10'
+                    }`}
+                  >
+                    <span>Auto</span>
+                    {currentQualityId === -1 && <span className="text-[10px] text-emerald-400">✓</span>}
+                  </button>
+                  {qualityLevels.map((lvl) => (
+                    <button
+                      key={lvl.id}
+                      onClick={() => handleQualityChange(lvl.id)}
+                      className={`w-full text-left px-3 py-1.5 text-xs font-sans transition flex items-center justify-between ${
+                        currentQualityId === lvl.id 
+                          ? 'bg-emerald-500/20 text-emerald-300 font-semibold border-l-2 border-emerald-400' 
+                          : 'text-white/80 hover:bg-white/10'
+                      }`}
+                    >
+                      <span>{lvl.name}</span>
+                      {currentQualityId === lvl.id && <span className="text-[10px] text-emerald-400">✓</span>}
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
           )}
         </div>
       </div>
@@ -746,28 +817,28 @@ export default function VideoPlayer({ server1Url, server2Url, server3Url, server
 
       {/* Bottom Control bar overlay */}
       <div 
-        className={`absolute bottom-0 left-0 right-0 p-4 bg-gradient-to-t from-black/95 to-transparent flex items-center justify-between transition-opacity duration-300 z-20 ${
+        className={`absolute bottom-0 left-0 right-0 p-3 sm:p-4 bg-gradient-to-t from-black/95 to-transparent flex items-center justify-between transition-opacity duration-300 z-20 gap-2 ${
           showControls || !isPlaying ? 'opacity-100' : 'opacity-0 pointer-events-none'
         }`}
         onClick={(e) => e.stopPropagation()}
       >
-        <div className="flex items-center gap-3 sm:gap-4">
+        <div className="flex items-center gap-1.5 sm:gap-3 max-w-[70%]">
           <button
             id="bottom_play_toggle"
             onClick={togglePlay}
-            className="text-white hover:text-emerald-400 font-semibold active:scale-90 transition"
+            className="text-white hover:text-emerald-400 font-semibold active:scale-90 transition p-1 rounded-full bg-white/5 border border-white/10 backdrop-blur-md"
           >
-            {isPlaying ? <Pause size={20} className="fill-current" /> : <Play size={20} className="fill-current" />}
+            {isPlaying ? <Pause size={16} className="fill-current" /> : <Play size={16} className="fill-current" />}
           </button>
 
           {/* Volume control with hover expand */}
-          <div className="flex items-center gap-2 group/volume">
+          <div className="flex items-center gap-1 sm:gap-2 group/volume p-1 rounded-full bg-white/5 border border-white/10 backdrop-blur-md">
             <button
               id="player_mute_toggle"
               onClick={toggleMute}
               className="text-white hover:text-emerald-400 transition"
             >
-              {isMuted ? <VolumeX size={20} /> : <Volume2 size={20} />}
+              {isMuted ? <VolumeX size={14} /> : <Volume2 size={14} />}
             </button>
             <input
               id="player_volume_slider"
@@ -777,105 +848,32 @@ export default function VideoPlayer({ server1Url, server2Url, server3Url, server
               step="0.05"
               value={isMuted ? 0 : volume}
               onChange={handleVolumeChange}
-              className="w-12 sm:w-20 h-1 bg-white/20 rounded-lg appearance-none cursor-pointer accent-emerald-500 focus:outline-none"
+              className="w-8 sm:w-16 h-1 bg-white/20 rounded-lg appearance-none cursor-pointer accent-emerald-500 focus:outline-none"
             />
           </div>
 
           {/* LIVE status indicator (Shortened to classic tiny LIVE pill) */}
-          <span className="flex items-center gap-1 px-1.5 py-0.5 rounded bg-rose-600 text-white font-mono text-[9px] font-black uppercase tracking-wider animate-pulse">
-            <span className="w-1 h-1 rounded-full bg-white animate-ping" />
+          <span className="flex items-center gap-0.5 sm:gap-1 px-1 py-0.5 rounded bg-rose-600/30 text-rose-400 border border-rose-500/20 backdrop-blur-md font-mono text-[8px] sm:text-[9px] font-black uppercase tracking-wider">
+            <span className="w-1 h-1 rounded-full bg-rose-400 animate-ping" />
             LIVE
           </span>
 
           {/* New digital session / playback timer */}
-          <span className="flex items-center gap-1 px-2 py-0.5 rounded-full bg-zinc-800/80 text-white font-mono text-[10px] font-medium border border-white/5 shadow-sm">
-            <Clock size={11} className="text-emerald-400" />
+          <span className="flex items-center gap-1 px-1.5 py-0.5 rounded-full bg-white/5 text-white font-mono text-[8px] sm:text-[10px] font-semibold border border-white/10 backdrop-blur-md shadow-md shrink-0">
+            <Clock size={10} className="text-emerald-400 animate-pulse" />
             <span>{renderTimer()}</span>
           </span>
         </div>
 
-        <div className="flex items-center gap-2 sm:gap-3">
-          {/* Compact VPN / Proxy Toggle Button with Shield Icon */}
-          <button
-            id="player_proxy_toggle"
-            onClick={toggleProxy}
-            className={`flex items-center gap-1 px-2 py-0.5 rounded-full border transition-all duration-300 active:scale-95 text-[10px] sm:text-xs font-sans font-black shrink-0 ${
-              useProxy 
-                ? 'bg-emerald-500 text-black border-emerald-400 shadow-md shadow-emerald-500/20' 
-                : 'bg-zinc-800/80 border-zinc-700 text-zinc-300 hover:bg-zinc-700 hover:text-white'
-            }`}
-            title={useProxy ? "প্রক্সি চালু (ON)" : "প্রক্সি বন্ধ (OFF)"}
-          >
-            <Shield size={11} className={useProxy ? 'fill-current animate-pulse' : 'text-zinc-400'} />
-            <span className="tracking-wide text-[9px] sm:text-[10px]">{useProxy ? 'ON' : 'OFF'}</span>
-          </button>
-
-          {/* Dynamic quality levels ABR selector */}
-          {qualityLevels.length > 0 && (
-            <div className="relative">
-              <button
-                id="player_quality_toggle"
-                onClick={(e) => {
-                  e.stopPropagation();
-                  setShowQualityMenu(!showQualityMenu);
-                }}
-                className="flex items-center gap-1 px-1.5 sm:px-2 py-1.5 rounded-full bg-white/10 border border-white/5 hover:bg-white/20 text-white font-sans text-[10px] sm:text-xs transition active:scale-95 shrink-0"
-                title="ভিডিও কোয়ালিটি"
-              >
-                <Settings size={12} className={`transition-transform duration-300 ${showQualityMenu ? 'rotate-45' : ''}`} />
-                <span>
-                  {currentQualityId === -1 
-                    ? `Auto${activeLevelHeight ? ` (${activeLevelHeight}p)` : ''}` 
-                    : qualityLevels.find(q => q.id === currentQualityId)?.name || 'Auto'}
-                </span>
-              </button>
-
-              {showQualityMenu && (
-                <div 
-                  className="absolute bottom-10 right-0 mb-2 w-32 bg-zinc-950/95 border border-white/10 rounded-xl overflow-hidden shadow-2xl backdrop-blur-xl z-30"
-                  onClick={(e) => e.stopPropagation()}
-                >
-                  <div className="py-1 text-center font-bold text-[9px] sm:text-[10px] text-zinc-500 border-b border-white/5 uppercase select-none">
-                    কোয়ালিটি
-                  </div>
-                  <button
-                    onClick={() => handleQualityChange(-1)}
-                    className={`w-full text-left px-3 py-1.5 text-xs font-sans transition flex items-center justify-between ${
-                      currentQualityId === -1 
-                        ? 'bg-emerald-500 text-black font-semibold' 
-                        : 'text-white hover:bg-white/10'
-                    }`}
-                  >
-                    <span>Auto</span>
-                    {currentQualityId === -1 && <span className="text-[10px]">✓</span>}
-                  </button>
-                  {qualityLevels.map((lvl) => (
-                    <button
-                      key={lvl.id}
-                      onClick={() => handleQualityChange(lvl.id)}
-                      className={`w-full text-left px-3 py-1.5 text-xs font-sans transition flex items-center justify-between ${
-                        currentQualityId === lvl.id 
-                          ? 'bg-emerald-500 text-black font-semibold' 
-                          : 'text-white hover:bg-white/10'
-                      }`}
-                    >
-                      <span>{lvl.name}</span>
-                      {currentQualityId === lvl.id && <span className="text-[10px]">✓</span>}
-                    </button>
-                  ))}
-                </div>
-              )}
-            </div>
-          )}
-
+        <div className="flex items-center gap-1.5 sm:gap-3 shrink-0">
           {/* Aspect Ratio Adjustment Toggle button */}
           <button
             id="player_aspect_ratio"
             onClick={cycleAspectRatio}
-            className="flex items-center gap-1 px-2 py-1.5 rounded-full bg-white/10 border border-white/5 hover:bg-white/20 text-white font-sans text-[10px] sm:text-xs transition active:scale-95 shrink-0"
+            className="flex items-center gap-0.5 px-1 sm:px-1.5 py-0.5 rounded bg-white/5 border border-white/10 hover:bg-white/15 text-white font-sans text-[7px] sm:text-[8px] font-bold tracking-tight transition active:scale-95 shrink-0 backdrop-blur-md"
             title="Aspect Ratio"
           >
-            <Maximize2 size={12} />
+            <Maximize2 size={8} />
             <span>{aspectRatio === 'contain' ? 'সাধারণ' : aspectRatio === 'cover' ? 'জুম' : 'ফুল'}</span>
           </button>
 
@@ -883,9 +881,9 @@ export default function VideoPlayer({ server1Url, server2Url, server3Url, server
           <button
             id="player_fullscreen_toggle"
             onClick={handleFullscreenToggle}
-            className="p-1.5 rounded-full bg-white/10 hover:bg-white/20 text-white hover:text-emerald-400 border border-white/10 active:scale-90 transition"
+            className="p-1 sm:p-1.5 rounded-full bg-white/5 hover:bg-white/15 text-white hover:text-emerald-400 border border-white/10 active:scale-90 transition backdrop-blur-md"
           >
-            {isFullscreen ? <Minimize size={18} /> : <Maximize size={18} />}
+            {isFullscreen ? <Minimize size={14} /> : <Maximize size={14} />}
           </button>
         </div>
       </div>
