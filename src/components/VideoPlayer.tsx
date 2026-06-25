@@ -181,33 +181,36 @@ export default function VideoPlayer({ server1Url, server2Url, server3Url, server
       const hls = new Hls({
         enableWorker: true,
         enableSoftwareAES: false,           // Utilize native Web Crypto hardware APIs instead of software CPU decryption
-        lowLatencyMode: true,
-        maxBufferLength: 5,                  // Optimized tight buffer length (5 seconds)
-        maxMaxBufferLength: 8,               // Restrict maximum buffer accumulation to pre-emptively prevent lag
-        liveSyncDuration: 3,                 // Fast sync latency (3 seconds) for responsive channel loading
-        liveMaxLatencyDuration: 6,           // Cap maximum latency at 6 seconds
-        backBufferLength: 5,                 // Discard played chunks aggressively to save CPU/GPU memory footprint
-        manifestLoadingTimeOut: 10000,
-        manifestLoadingMaxRetry: 10,
-        manifestLoadingRetryDelay: 500,
-        levelLoadingTimeOut: 10000,
-        levelLoadingMaxRetry: 10,
-        levelLoadingRetryDelay: 500,
-        fragLoadingTimeOut: 10000,
-        fragLoadingMaxRetry: 10,
-        fragLoadingRetryDelay: 500,
-        initialLiveManifestSize: 1,
-        maxBufferHole: 0.5,                  // Jump small buffer holes instantly
-        highBufferWatchdogPeriod: 2,
-        nudgeMaxRetry: 15,                   // Aggressive nudge on stall
-        nudgeDuration: 0.1,
-        nudgeDelay: 0.1,
+        lowLatencyMode: false,              // Disable raw low-latency mode to allow a larger, robust 15s pre-download cushion
+        maxBufferLength: 15,                 // 15 seconds pre-download buffer size as requested by user to prevent buffering!
+        maxMaxBufferLength: 20,              // Up to 20 seconds absolute maximum buffer accumulation to keep stream fully continuous
+        liveSyncDuration: 12,                // Sync 12-15s behind live edge to establish a strong 15-second download safety margin
+        liveMaxLatencyDuration: 22,          // Keep live latency balanced while accommodating the pre-buffered data
+        backBufferLength: 10,                // Balanced discard played chunks to optimize mobile memory and speed
+        maxBufferSize: 60 * 1024 * 1024,     // 60MB large buffer allocation to support high quality 15s pre-buffered chunks
+        manifestLoadingTimeOut: 15000,       // Higher timeouts for bad network stability
+        manifestLoadingMaxRetry: 12,
+        manifestLoadingRetryDelay: 800,
+        levelLoadingTimeOut: 15000,
+        levelLoadingMaxRetry: 12,
+        levelLoadingRetryDelay: 800,
+        fragLoadingTimeOut: 15000,
+        fragLoadingMaxRetry: 12,
+        fragLoadingRetryDelay: 800,
+        initialLiveManifestSize: 2,          // Load at least 2 segments at start for instant buffering
+        maxBufferHole: 0.8,                  // Jump small gaps or drops instantly
+        highBufferWatchdogPeriod: 3,         // Active stall prevention tracking
+        nudgeMaxRetry: 20,                   // Extra retries for continuous video playback without stalling
+        nudgeDuration: 0.2,                  // Move playhead forward gently if stalled
+        nudgeDelay: 0.2,
         liveDurationInfinity: true,
         autoStartLoad: true,
         capLevelToPlayerSize: true,          // Automatically scale resolution level to container size for hardware conservation
-        startLevel: -1,                      // Native dynamic selection starts immediately on best matching level
-        abrBandWidthFactor: 0.95,            // Fast upscaling bitrate factor
-        abrBandWidthUpFactor: 0.7,
+        startLevel: -1,                      // Auto quality (Adaptive Bitrate) starts instantly based on actual internet speed
+        abrBandWidthFactor: 0.82,            // Safely select resolution below estimated bandwidth to prevent buffer runs
+        abrBandWidthUpFactor: 0.65,          // Conservative upscaling to prevent flickering/re-buffering on cellular data
+        abrEwmaFastLive: 2.0,                // Enhanced fast EWMA bandwidth measurement to track sudden mobile connection drops
+        abrEwmaSlowLive: 9.0,                // Enhanced slow EWMA to verify connection stability before increasing resolution
       } as any);
 
       hlsRef.current = hls;
