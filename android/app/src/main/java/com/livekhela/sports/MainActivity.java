@@ -1,12 +1,16 @@
 package com.livekhela.sports;
 
 import android.annotation.SuppressLint;
+import android.annotation.TargetApi;
+import android.net.http.SslError;
 import android.os.Build;
 import android.os.Bundle;
 import android.view.View;
 import android.view.WindowManager;
 import android.webkit.CookieManager;
+import android.webkit.SslErrorHandler;
 import android.webkit.WebChromeClient;
+import android.webkit.WebResourceRequest;
 import android.webkit.WebSettings;
 import android.webkit.WebView;
 import android.webkit.WebViewClient;
@@ -31,6 +35,9 @@ public class MainActivity extends AppCompatActivity {
 
         myWebView = findViewById(R.id.webview);
         
+        // Ensure WebView doesn't show a white background or flash white during loading
+        myWebView.setBackgroundColor(android.graphics.Color.parseColor("#09090b"));
+        
         // 1. Force Full Hardware-Accelerated Rendering at the WebView layer
         myWebView.setLayerType(View.LAYER_TYPE_HARDWARE, null);
 
@@ -42,6 +49,7 @@ public class MainActivity extends AppCompatActivity {
         webSettings.setDatabaseEnabled(true);
         webSettings.setLoadWithOverviewMode(true);
         webSettings.setUseWideViewPort(true);
+        webSettings.setJavaScriptCanOpenWindowsAutomatically(true);
         
         // 3. Optimize WebView Caching to handle high-traffic streaming chunks dynamically
         webSettings.setCacheMode(WebSettings.LOAD_DEFAULT);
@@ -65,12 +73,45 @@ public class MainActivity extends AppCompatActivity {
         String chromeUA = "Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/114.0.0.0 Mobile Safari/537.36 LiveKhelaAndroidApp/1.0";
         webSettings.setUserAgentString(chromeUA);
 
-        // Keep navigation inside WebView
+        // Keep navigation inside WebView and handle SSL / background
         myWebView.setWebViewClient(new WebViewClient() {
+            @SuppressWarnings("deprecation")
             @Override
             public boolean shouldOverrideUrlLoading(WebView view, String url) {
-                view.loadUrl(url);
-                return true;
+                if (url.startsWith("http://") || url.startsWith("https://")) {
+                    view.loadUrl(url);
+                    return false; // let webview handle it
+                }
+                return true; // prevent loading other schemes
+            }
+
+            @TargetApi(Build.VERSION_CODES.N)
+            @Override
+            public boolean shouldOverrideUrlLoading(WebView view, WebResourceRequest request) {
+                String url = request.getUrl().toString();
+                if (url.startsWith("http://") || url.startsWith("https://")) {
+                    view.loadUrl(url);
+                    return false; // let webview handle it
+                }
+                return true; // prevent loading other schemes
+            }
+
+            @Override
+            public void onReceivedSslError(WebView view, SslErrorHandler handler, SslError error) {
+                // Ignore SSL certificate errors to prevent blank screen for test/dev domains or CDN node issues
+                handler.proceed();
+            }
+
+            @Override
+            public void onPageStarted(WebView view, String url, android.graphics.Bitmap favicon) {
+                super.onPageStarted(view, url, favicon);
+                view.setBackgroundColor(android.graphics.Color.parseColor("#09090b"));
+            }
+
+            @Override
+            public void onPageFinished(WebView view, String url) {
+                super.onPageFinished(view, url);
+                view.setBackgroundColor(android.graphics.Color.parseColor("#09090b"));
             }
         });
 
