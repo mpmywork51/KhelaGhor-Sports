@@ -13,7 +13,9 @@ import {
   Maximize2,
   RefreshCw,
   AlertTriangle,
-  Settings
+  Settings,
+  Shield,
+  Clock
 } from 'lucide-react';
 
 interface VideoPlayerProps {
@@ -57,7 +59,46 @@ export default function VideoPlayer({ server1Url, server2Url, server3Url, server
       return false;
     }
   });
+  const [currentTime, setCurrentTime] = useState<number>(0);
+  const [duration, setDuration] = useState<number>(0);
+  const [sessionTime, setSessionTime] = useState<number>(0);
   const controlsTimeoutRef = useRef<number | null>(null);
+
+  // Elegant watches and live timers tracking
+  useEffect(() => {
+    let interval: any = null;
+    if (isPlaying) {
+      interval = setInterval(() => {
+        setSessionTime((prev) => prev + 1);
+      }, 1000);
+    } else {
+      if (interval) clearInterval(interval);
+    }
+    return () => {
+      if (interval) clearInterval(interval);
+    };
+  }, [isPlaying]);
+
+  const formatTime = (secs: number) => {
+    if (isNaN(secs) || !isFinite(secs) || secs < 0) return '00:00';
+    const h = Math.floor(secs / 3600);
+    const m = Math.floor((secs % 3600) / 60);
+    const s = Math.floor(secs % 60);
+    const mm = m < 10 ? `0${m}` : m;
+    const ss = s < 10 ? `0${s}` : s;
+    if (h > 0) {
+      return `${h}:${mm}:${ss}`;
+    }
+    return `${mm}:${ss}`;
+  };
+
+  const renderTimer = () => {
+    if (duration && isFinite(duration) && duration > 0) {
+      return `${formatTime(currentTime)} / ${formatTime(duration)}`;
+    }
+    // For live streams, show watch time of current session
+    return formatTime(currentTime && currentTime > 0 && currentTime !== Infinity ? currentTime : sessionTime);
+  };
 
   // Auto-hide quality menu on controls fade
   useEffect(() => {
@@ -172,6 +213,9 @@ export default function VideoPlayer({ server1Url, server2Url, server3Url, server
 
     setHasError(false);
     setIsBuffering(true);
+    setCurrentTime(0);
+    setDuration(0);
+    setSessionTime(0);
     const video = videoRef.current;
     if (!video) return;
 
@@ -540,6 +584,16 @@ export default function VideoPlayer({ server1Url, server2Url, server3Url, server
         }}
         onWaiting={() => setIsBuffering(true)}
         onPlaying={() => setIsBuffering(false)}
+        onTimeUpdate={() => {
+          if (videoRef.current) {
+            setCurrentTime(videoRef.current.currentTime);
+          }
+        }}
+        onDurationChange={() => {
+          if (videoRef.current) {
+            setDuration(videoRef.current.duration);
+          }
+        }}
       />
 
       {/* Top Header Overlay Control Bar */}
@@ -620,7 +674,7 @@ export default function VideoPlayer({ server1Url, server2Url, server3Url, server
 
       {/* Glassmorphic Auto buffering loader / CORS error displays */}
       {isBuffering && !hasError && (
-        <div className="absolute inset-0 flex flex-col items-center justify-center bg-black/60 backdrop-blur-sm z-10">
+        <div className="absolute inset-0 flex flex-col items-center justify-center bg-black/40 z-10">
           <div className="relative flex items-center justify-center">
             {/* Pulsing ring */}
             <div className="absolute w-16 h-16 rounded-full border-4 border-emerald-500/30 animate-ping" />
@@ -661,17 +715,17 @@ export default function VideoPlayer({ server1Url, server2Url, server3Url, server
 
             <button
               onClick={toggleProxy}
-              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg border transition text-[10px] sm:text-xs font-sans font-semibold ${
+              className={`flex items-center gap-2 px-4 py-2 rounded-xl border transition-all duration-300 shadow-md text-xs font-sans font-semibold ${
                 useProxy 
-                  ? 'bg-emerald-500/10 border-emerald-500/30 text-emerald-400 hover:bg-emerald-500/20' 
-                  : 'bg-zinc-800/80 border-zinc-700 text-zinc-400 hover:bg-zinc-700/80'
+                  ? 'bg-emerald-500 text-black border-emerald-400 font-bold' 
+                  : 'bg-zinc-800/90 border-zinc-700 text-zinc-200 hover:bg-zinc-700'
               }`}
             >
-              <span className={`w-1.5 h-1.5 rounded-full ${useProxy ? 'bg-emerald-400 animate-pulse' : 'bg-zinc-500'}`} />
-              <span>প্রক্সি টাইপ পরিবর্তন করুন (বর্তমানে: {useProxy ? 'সার্ভার প্রক্সি' : 'সরাসরি নেটওয়ার্ক'})</span>
+              <Shield size={14} className={useProxy ? 'fill-current animate-pulse' : ''} />
+              <span>নিরাপদ ভিপিএন (VPN) প্রক্সি: {useProxy ? 'চালু (ON)' : 'বন্ধ (OFF)'}</span>
             </button>
-            <p className="text-[9px] sm:text-[10px] text-zinc-400 max-w-xs leading-normal">
-              * প্রক্সি বন্ধ করলে ভিডিও সরাসরি আপনার মোবাইল নেটওয়ার্ক দিয়ে লোড হবে। প্রক্সি চালু করলে আমাদের সিকিউর প্রক্সি সার্ভার ব্যবহার হবে।
+            <p className="text-[10px] text-zinc-400 max-w-xs leading-relaxed text-center">
+              * ভিপিএন বন্ধ থাকলে ভিডিও সরাসরি আপনার মোবাইল ইন্টারনেট দিয়ে লোড হবে। বাফারিং বা লোডিং সমস্যা হলে এটি চালু করে দেখতে পারেন।
             </p>
           </div>
         </div>
@@ -732,22 +786,28 @@ export default function VideoPlayer({ server1Url, server2Url, server3Url, server
             <span className="w-1 h-1 rounded-full bg-white animate-ping" />
             LIVE
           </span>
+
+          {/* New digital session / playback timer */}
+          <span className="flex items-center gap-1 px-2 py-0.5 rounded-full bg-zinc-800/80 text-white font-mono text-[10px] font-medium border border-white/5 shadow-sm">
+            <Clock size={11} className="text-emerald-400" />
+            <span>{renderTimer()}</span>
+          </span>
         </div>
 
         <div className="flex items-center gap-2 sm:gap-3">
-          {/* Proxy Helper Toggle Button */}
+          {/* Compact VPN / Proxy Toggle Button with Shield Icon */}
           <button
             id="player_proxy_toggle"
             onClick={toggleProxy}
-            className={`flex items-center gap-1 px-2.2 sm:px-2.5 py-1.5 rounded-full border transition active:scale-95 text-[10px] sm:text-xs font-sans font-semibold shrink-0 ${
+            className={`flex items-center gap-1 px-2 py-0.5 rounded-full border transition-all duration-300 active:scale-95 text-[10px] sm:text-xs font-sans font-black shrink-0 ${
               useProxy 
-                ? 'bg-emerald-500/10 border-emerald-500/30 text-emerald-400 hover:bg-emerald-500/20' 
-                : 'bg-zinc-800/80 border-zinc-700 text-zinc-400 hover:bg-zinc-700/80'
+                ? 'bg-emerald-500 text-black border-emerald-400 shadow-md shadow-emerald-500/20' 
+                : 'bg-zinc-800/80 border-zinc-700 text-zinc-300 hover:bg-zinc-700 hover:text-white'
             }`}
-            title="Toggle server proxy for geo-blocked streams"
+            title={useProxy ? "প্রক্সি চালু (ON)" : "প্রক্সি বন্ধ (OFF)"}
           >
-            <span className={`w-1.5 h-1.5 rounded-full ${useProxy ? 'bg-emerald-400 animate-pulse' : 'bg-zinc-500'}`} />
-            <span>প্রক্সি: {useProxy ? 'চালু' : 'বন্ধ'}</span>
+            <Shield size={11} className={useProxy ? 'fill-current animate-pulse' : 'text-zinc-400'} />
+            <span className="tracking-wide text-[9px] sm:text-[10px]">{useProxy ? 'ON' : 'OFF'}</span>
           </button>
 
           {/* Dynamic quality levels ABR selector */}
