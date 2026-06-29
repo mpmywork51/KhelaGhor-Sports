@@ -696,29 +696,7 @@ export default function App() {
 
                </div>
 
-                  {/* Beautiful Bengali Footer with clean links */}
-                  <footer className="mt-12 border-t border-white/5 pt-6 pb-8 text-center text-slate-500 text-xs font-sans">
-                    <div className="flex flex-col items-center gap-2">
-                      <div className="flex flex-wrap items-center justify-center gap-x-3 gap-y-1.5 text-xs text-slate-400">
-                        <button 
-                          onClick={() => navigateTo('/privacy-policy')}
-                          className="hover:text-emerald-400 transition-colors duration-200 cursor-pointer text-xs font-medium font-sans"
-                        >
-                          প্রাইভেসি পলিসি (Privacy Policy)
-                        </button>
-                        <span className="text-slate-800 select-none">•</span>
-                        <button 
-                          onClick={() => navigateTo('/terms')}
-                          className="hover:text-emerald-400 transition-colors duration-200 cursor-pointer text-xs font-medium font-sans"
-                        >
-                          শর্তাবলী ও দায়মুক্তি (Terms of Service)
-                        </button>
-                      </div>
-                      <p className="text-[10px] text-slate-600 font-mono mt-1">
-                        © 2026 Livekhela.site. All Rights Reserved.
-                      </p>
-                    </div>
-                  </footer>
+                  {/* Footer removed from main view for a cleaner interface, while policy pages remain accessible via URLs */}
                 </>
               )}
             </div>
