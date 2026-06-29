@@ -312,47 +312,67 @@ export default function VideoPlayer({ server1Url, server2Url, server3Url, server
 
     let lastTime = videoRef.current?.currentTime || 0;
     let stallCount = 0;
+    let bufferStallCount = 0;
 
     const watchdogInterval = setInterval(() => {
       const video = videoRef.current;
       if (!video) return;
 
-      // Skip checking if the video is paused by the user
-      if (video.paused) {
+      // Skip checking if the video is paused by the user or has ended
+      if (video.paused || video.ended) {
         stallCount = 0;
+        bufferStallCount = 0;
         return;
       }
 
       const curTime = video.currentTime;
       if (curTime === lastTime) {
         stallCount++;
-        console.log(`Watchdog: Stream freeze detected (${stallCount}/5). CurrentTime: ${curTime}`);
+        console.log(`Watchdog: Playback freeze detected (${stallCount}s). CurrentTime: ${curTime}`);
 
-        // Level 1 Recovery: Gentle Nudge (Move playhead slightly forward after 3s of freezing)
+        // If the player is currently buffering, allow it to buffer naturally up to 15s before hard reloading
+        if (isBuffering) {
+          bufferStallCount++;
+          if (bufferStallCount >= 15) {
+            console.log('Watchdog: Stuck in buffering for over 15 seconds. Re-initializing player...');
+            bufferStallCount = 0;
+            stallCount = 0;
+            initializePlayer();
+          }
+          return;
+        }
+
+        // If not actively buffering, but time is frozen, it is a silent/stuck freeze
+        // Level 1: Gentle Nudge or Sync to Live Edge (Bypasses bad frames or timestamps)
         if (stallCount === 3) {
-          console.log('Watchdog: Attempting gentle nudge to kickstart decoding pipeline...');
+          console.log('Watchdog: Silent freeze detected. Attempting to seek past bad segment...');
           try {
-            // Move playhead forward by 0.15s to bypass stalled frames
-            video.currentTime = video.currentTime + 0.15;
+            const isLive = !video.duration || video.duration === Infinity || isNaN(video.duration);
+            if (isLive && hlsRef.current && hlsRef.current.liveSyncPosition) {
+              console.log('Watchdog: Syncing live stream back to live edge position:', hlsRef.current.liveSyncPosition);
+              video.currentTime = hlsRef.current.liveSyncPosition;
+            } else {
+              // Nudge forward slightly to skip stuck frames
+              video.currentTime = video.currentTime + 0.25;
+            }
           } catch (e) {
             console.error('Watchdog nudge failed:', e);
           }
         }
 
-        // Level 2 Recovery: Hard Hot-Reinitialization (After 5s of freezing, simulate exiting and re-entering the stream)
-        if (stallCount >= 5) {
-          console.log('Watchdog: Playback is hard frozen. Executing dynamic hot-reload...');
+        // Level 2: Hard Hot-Reinitialization (If still frozen after 6 seconds)
+        if (stallCount >= 6) {
+          console.log('Watchdog: Silent freeze persisted for 6s. Performing hot re-initialization...');
           stallCount = 0;
+          bufferStallCount = 0;
           
           const savedTime = video.currentTime;
           const isLiveStream = !video.duration || video.duration === Infinity || isNaN(video.duration);
           
           setIsBuffering(true);
-          
-          // Recreate HLS instance and attach video elements from scratch
           initializePlayer();
 
-          // For non-live streams, restore play position smoothly
+          // Restore position for video-on-demand content
           if (!isLiveStream && savedTime > 0 && isFinite(savedTime)) {
             setTimeout(() => {
               const freshVideo = videoRef.current;
@@ -360,7 +380,7 @@ export default function VideoPlayer({ server1Url, server2Url, server3Url, server
                 try {
                   freshVideo.currentTime = savedTime;
                 } catch (e) {
-                  console.warn('Watchdog failed to restore playback position:', e);
+                  console.warn('Watchdog failed to restore play position:', e);
                 }
               }
             }, 1000);
@@ -369,6 +389,7 @@ export default function VideoPlayer({ server1Url, server2Url, server3Url, server
       } else {
         // Playback is moving smoothly, reset stall counters
         stallCount = 0;
+        bufferStallCount = 0;
         lastTime = curTime;
       }
     }, 1000);
@@ -376,7 +397,7 @@ export default function VideoPlayer({ server1Url, server2Url, server3Url, server
     return () => {
       clearInterval(watchdogInterval);
     };
-  }, [isPlaying, hasError, currentUrl]);
+  }, [isPlaying, isBuffering, hasError, currentUrl]);
 
   const getStreamSource = (url: string): string => {
     if (!url) return '';
@@ -419,8 +440,7 @@ export default function VideoPlayer({ server1Url, server2Url, server3Url, server
         lowLatencyMode: false,              // Disable raw low-latency mode to allow a larger, robust 15s pre-download cushion
         maxBufferLength: minBuffer,          // Configurable pre-download buffer size (Min Buffer)
         maxMaxBufferLength: maxBuffer,       // Configurable absolute maximum buffer accumulation (Max Buffer)
-        liveSyncDuration: Math.max(minBuffer - 3, 8), // Establishing buffer safety margin
-        liveMaxLatencyDuration: maxBuffer + 5,      // Keep live latency balanced while accommodating the pre-buffered data
+        liveSyncDurationCount: 3,            // Dynamically and safely sync to exactly 3 segment durations behind the live edge
         backBufferLength: 10,                // Balanced discard played chunks to optimize mobile memory and speed
         maxBufferSize: 80 * 1024 * 1024,     // 80MB larger buffer allocation to support high quality pre-buffered chunks
         manifestLoadingTimeOut: 15000,       // Higher timeouts for bad network stability
@@ -433,11 +453,11 @@ export default function VideoPlayer({ server1Url, server2Url, server3Url, server
         fragLoadingMaxRetry: 12,
         fragLoadingRetryDelay: 800,
         initialLiveManifestSize: 2,          // Load at least 2 segments at start for instant buffering
-        maxBufferHole: 0.8,                  // Jump small gaps or drops instantly
-        highBufferWatchdogPeriod: 3,         // Active stall prevention tracking
-        nudgeMaxRetry: 20,                   // Extra retries for continuous video playback without stalling
-        nudgeDuration: 0.2,                  // Move playhead forward gently if stalled
-        nudgeDelay: 0.2,
+        maxBufferHole: 1.5,                  // Jump larger gaps or drops instantly without stalling (ideal for IPTV/m3u8 links)
+        highBufferWatchdogPeriod: 2,         // Faster active stall prevention tracking
+        nudgeMaxRetry: 25,                   // Extra retries for continuous video playback without stalling
+        nudgeDuration: 0.15,                  // Move playhead forward gently if stalled
+        nudgeDelay: 0.15,
         liveDurationInfinity: true,
         autoStartLoad: true,
         capLevelToPlayerSize: true,          // Automatically scale resolution level to container size for hardware conservation
