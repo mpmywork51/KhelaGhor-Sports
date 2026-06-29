@@ -306,6 +306,78 @@ export default function VideoPlayer({ server1Url, server2Url, server3Url, server
     };
   }, [currentUrl]);
 
+  // Anti-Freeze & Playback Stall Auto-Recovery Watchdog
+  useEffect(() => {
+    if (!isPlaying || hasError) return;
+
+    let lastTime = videoRef.current?.currentTime || 0;
+    let stallCount = 0;
+
+    const watchdogInterval = setInterval(() => {
+      const video = videoRef.current;
+      if (!video) return;
+
+      // Skip checking if the video is paused by the user
+      if (video.paused) {
+        stallCount = 0;
+        return;
+      }
+
+      const curTime = video.currentTime;
+      if (curTime === lastTime) {
+        stallCount++;
+        console.log(`Watchdog: Stream freeze detected (${stallCount}/5). CurrentTime: ${curTime}`);
+
+        // Level 1 Recovery: Gentle Nudge (Move playhead slightly forward after 3s of freezing)
+        if (stallCount === 3) {
+          console.log('Watchdog: Attempting gentle nudge to kickstart decoding pipeline...');
+          try {
+            // Move playhead forward by 0.15s to bypass stalled frames
+            video.currentTime = video.currentTime + 0.15;
+          } catch (e) {
+            console.error('Watchdog nudge failed:', e);
+          }
+        }
+
+        // Level 2 Recovery: Hard Hot-Reinitialization (After 5s of freezing, simulate exiting and re-entering the stream)
+        if (stallCount >= 5) {
+          console.log('Watchdog: Playback is hard frozen. Executing dynamic hot-reload...');
+          stallCount = 0;
+          
+          const savedTime = video.currentTime;
+          const isLiveStream = !video.duration || video.duration === Infinity || isNaN(video.duration);
+          
+          setIsBuffering(true);
+          
+          // Recreate HLS instance and attach video elements from scratch
+          initializePlayer();
+
+          // For non-live streams, restore play position smoothly
+          if (!isLiveStream && savedTime > 0 && isFinite(savedTime)) {
+            setTimeout(() => {
+              const freshVideo = videoRef.current;
+              if (freshVideo) {
+                try {
+                  freshVideo.currentTime = savedTime;
+                } catch (e) {
+                  console.warn('Watchdog failed to restore playback position:', e);
+                }
+              }
+            }, 1000);
+          }
+        }
+      } else {
+        // Playback is moving smoothly, reset stall counters
+        stallCount = 0;
+        lastTime = curTime;
+      }
+    }, 1000);
+
+    return () => {
+      clearInterval(watchdogInterval);
+    };
+  }, [isPlaying, hasError, currentUrl]);
+
   const getStreamSource = (url: string): string => {
     if (!url) return '';
     if (url.startsWith('/') || url.startsWith('blob:') || url.startsWith('data:')) {
