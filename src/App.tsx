@@ -23,6 +23,8 @@ import ChannelCard from './components/ChannelCard';
 import VideoPlayer from './components/VideoPlayer';
 import BannerAd from './components/BannerAd';
 import AdminPanel from './components/AdminPanel';
+import PrivacyPolicy from './components/PrivacyPolicy';
+import TermsOfService from './components/TermsOfService';
 import { NavigationTab, Match, UpcomingMatch, Channel, GlobalSettings, SportCategory } from './types';
 import { 
   subscribeToMatches, 
@@ -70,6 +72,25 @@ export default function App() {
   const [isWelcomeOpen, setIsWelcomeOpen] = useState(false);
   const [activeTab, setActiveTab] = useState<NavigationTab>(NavigationTab.LIVE_MATCH);
   const [selectedSport, setSelectedSport] = useState<'all' | SportCategory>('all');
+
+  // URL-based client-side routing state for /privacy-policy and /terms pages
+  const [currentPath, setCurrentPath] = useState<string>(window.location.pathname);
+
+  useEffect(() => {
+    const handleLocationChange = () => {
+      setCurrentPath(window.location.pathname);
+    };
+    window.addEventListener('popstate', handleLocationChange);
+    return () => {
+      window.removeEventListener('popstate', handleLocationChange);
+    };
+  }, []);
+
+  const navigateTo = (path: string) => {
+    window.history.pushState(null, '', path);
+    setCurrentPath(path);
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
 
   // Currently playing stream structures
   const [activePlayback, setActivePlayback] = useState<{
@@ -448,7 +469,13 @@ export default function App() {
           {/* Public Views rendering */}
           {!isAdmin && (
             <div>
-              {/* Live Match sport category Horizontal Navigation carousel */}
+              {currentPath === '/privacy-policy' ? (
+                <PrivacyPolicy onBack={() => navigateTo('/')} />
+              ) : currentPath === '/terms' ? (
+                <TermsOfService onBack={() => navigateTo('/')} />
+              ) : (
+                <>
+                  {/* Live Match sport category Horizontal Navigation carousel */}
               {activeTab === NavigationTab.LIVE_MATCH && (
                 <div 
                   id="category_scroller"
@@ -638,45 +665,76 @@ export default function App() {
                    </div>
                  )}
 
-                 {/* 3. Upcoming schedule matches list */}
-                 {activeTab === NavigationTab.UPCOMING && (
-                   <div className="flex flex-col gap-6">
-                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                       {upcoming.length === 0 ? (
-                         <div className="col-span-full py-16 text-center text-slate-500 flex flex-col items-center justify-center font-sans">
-                           <Clock size={36} className="text-slate-700 mb-3" />
-                           <span className="text-sm font-bold text-slate-400">নিকট ভবিষ্যতে কোন ম্যাচ সিডিউল করা নাই।</span>
-                           <span className="text-xs text-slate-500 mt-1">নতুন ম্যাচের সিডিউল আসার জন্য লাইভখেলার সাথে থাকুন।</span>
-                         </div>
-                       ) : (
-                         upcoming.map((um) => (
-                           <UpcomingCard
-                             key={um.id}
-                             upcoming={um}
-                             isAdmin={isAdmin}
-                             onCountdownCompleted={handleUpcomingFinished}
-                           />
-                         ))
-                       )}
-                     </div>
+                                   {/* 3. Upcoming schedule matches list */}
+                  {activeTab === NavigationTab.UPCOMING && (
+                    <div className="flex flex-col gap-6">
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        {upcoming.length === 0 ? (
+                          <div className="col-span-full py-16 text-center text-slate-500 flex flex-col items-center justify-center font-sans">
+                            <Clock size={36} className="text-slate-700 mb-3" />
+                            <span className="text-sm font-bold text-slate-400">নিকট ভবিষ্যতে কোন ম্যাচ সিডিউল করা নাই।</span>
+                            <span className="text-xs text-slate-500 mt-1">নতুন ম্যাচের সিডিউল আসার জন্য লাইভখেলার সাথে থাকুন।</span>
+                          </div>
+                        ) : (
+                          upcoming.map((um) => (
+                            <UpcomingCard
+                              key={um.id}
+                              upcoming={um}
+                              isAdmin={isAdmin}
+                              onCountdownCompleted={handleUpcomingFinished}
+                            />
+                          ))
+                        )}
+                      </div>
 
-                     <BannerAd 
-                       code={activeSettings.bannerAdCode} 
-                       enabled={activeSettings.bannerAdEnabled} 
-                     />
-                   </div>
-                 )}
+                      <BannerAd 
+                        code={activeSettings.bannerAdCode} 
+                        enabled={activeSettings.bannerAdEnabled} 
+                      />
+                    </div>
+                  )}
 
-              </div>
+               </div>
+
+                  {/* Beautiful Bengali SEO Footer with links */}
+                  <footer className="mt-16 border-t border-white/5 pt-8 pb-10 text-center text-slate-500 text-xs font-sans">
+                    <div className="flex flex-col items-center gap-3">
+                      <div className="flex items-center gap-1.5 select-none">
+                        <span className="text-base font-black tracking-tight bg-gradient-to-r from-emerald-400 to-emerald-500 bg-clip-text text-transparent drop-shadow-[0_2px_12px_rgba(52,211,153,0.15)] font-sans">
+                          LiveKhela
+                        </span>
+                      </div>
+                      <p className="max-w-md mx-auto text-[11px] leading-relaxed text-slate-400 font-sans">
+                        লাইভখেলা (Livekhela.site) ফুটবল, ক্রিকেট এবং সব ধরনের খেলার লাইভ স্ট্রিমিং ও সময়সূচী দেখার সবচেয়ে বিশ্বস্ত বাংলা প্ল্যাটফর্ম। কোনো বাফারিং ছাড়াই ফ্রিতে সরাসরি খেলা উপভোগ করুন।
+                      </p>
+                      <div className="flex flex-wrap items-center justify-center gap-x-4 gap-y-2 text-xs font-semibold text-emerald-400 mt-2">
+                        <button 
+                          onClick={() => navigateTo('/privacy-policy')}
+                          className="hover:text-emerald-300 transition-colors duration-200 cursor-pointer text-xs font-bold font-sans"
+                        >
+                          প্রাইভেসি পলিসি (Privacy Policy)
+                        </button>
+                        <span className="text-slate-700 select-none">•</span>
+                        <button 
+                          onClick={() => navigateTo('/terms')}
+                          className="hover:text-emerald-300 transition-colors duration-200 cursor-pointer text-xs font-bold font-sans"
+                        >
+                          শর্তাবলী ও দায়মুক্তি (Terms of Service)
+                        </button>
+                      </div>
+                      <p className="text-[10px] text-slate-600 font-mono mt-4">
+                        © 2026 Livekhela.site. সর্বস্বত্ব সংরক্ষিত।
+                      </p>
+                    </div>
+                  </footer>
+                </>
+              )}
             </div>
           )}
 
         </main>
       )}
-
-
-
-      {/* 3. Floating Bottom Navigation Glassmorphic bar */}
+                 {/* 3. Floating Bottom Navigation Glassmorphic bar */}
       {!isSplashActive && !isAdmin && (
         <nav 
           id="livekhela_bottom_navigation"
@@ -686,6 +744,7 @@ export default function App() {
           <button
             id="nav_tab_live"
             onClick={() => {
+              navigateTo('/');
               setActiveTab(NavigationTab.LIVE_MATCH);
               setSelectedSport('all'); // Reset filter
             }}
@@ -709,7 +768,10 @@ export default function App() {
           {/* Tab 2: Categories IPTV channels */}
           <button
             id="nav_tab_categories"
-            onClick={() => setActiveTab(NavigationTab.CATEGORIES)}
+            onClick={() => {
+              navigateTo('/');
+              setActiveTab(NavigationTab.CATEGORIES);
+            }}
             className={`flex flex-col items-center gap-1.5 py-1.5 px-4 rounded-xl transition-all duration-300 shrink-0 select-none ${
               activeTab === NavigationTab.CATEGORIES 
                 ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 shadow-md shadow-emerald-500/5' 
@@ -723,7 +785,10 @@ export default function App() {
           {/* Tab 3: Upcoming matches */}
           <button
             id="nav_tab_upcoming"
-            onClick={() => setActiveTab(NavigationTab.UPCOMING)}
+            onClick={() => {
+              navigateTo('/');
+              setActiveTab(NavigationTab.UPCOMING);
+            }}
             className={`flex flex-col items-center gap-1.5 py-1.5 px-4 rounded-xl transition-all duration-300 shrink-0 select-none ${
               activeTab === NavigationTab.UPCOMING 
                 ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 shadow-md shadow-emerald-500/5' 
