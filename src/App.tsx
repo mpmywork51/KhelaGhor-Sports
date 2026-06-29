@@ -696,34 +696,26 @@ export default function App() {
 
                </div>
 
-                  {/* Beautiful Bengali SEO Footer with links */}
-                  <footer className="mt-16 border-t border-white/5 pt-8 pb-10 text-center text-slate-500 text-xs font-sans">
-                    <div className="flex flex-col items-center gap-3">
-                      <div className="flex items-center gap-1.5 select-none">
-                        <span className="text-base font-black tracking-tight bg-gradient-to-r from-emerald-400 to-emerald-500 bg-clip-text text-transparent drop-shadow-[0_2px_12px_rgba(52,211,153,0.15)] font-sans">
-                          LiveKhela
-                        </span>
-                      </div>
-                      <p className="max-w-md mx-auto text-[11px] leading-relaxed text-slate-400 font-sans">
-                        লাইভখেলা (Livekhela.site) ফুটবল, ক্রিকেট এবং সব ধরনের খেলার লাইভ স্ট্রিমিং ও সময়সূচী দেখার সবচেয়ে বিশ্বস্ত বাংলা প্ল্যাটফর্ম। কোনো বাফারিং ছাড়াই ফ্রিতে সরাসরি খেলা উপভোগ করুন।
-                      </p>
-                      <div className="flex flex-wrap items-center justify-center gap-x-4 gap-y-2 text-xs font-semibold text-emerald-400 mt-2">
+                  {/* Beautiful Bengali Footer with clean links */}
+                  <footer className="mt-12 border-t border-white/5 pt-6 pb-8 text-center text-slate-500 text-xs font-sans">
+                    <div className="flex flex-col items-center gap-2">
+                      <div className="flex flex-wrap items-center justify-center gap-x-3 gap-y-1.5 text-xs text-slate-400">
                         <button 
                           onClick={() => navigateTo('/privacy-policy')}
-                          className="hover:text-emerald-300 transition-colors duration-200 cursor-pointer text-xs font-bold font-sans"
+                          className="hover:text-emerald-400 transition-colors duration-200 cursor-pointer text-xs font-medium font-sans"
                         >
                           প্রাইভেসি পলিসি (Privacy Policy)
                         </button>
-                        <span className="text-slate-700 select-none">•</span>
+                        <span className="text-slate-800 select-none">•</span>
                         <button 
                           onClick={() => navigateTo('/terms')}
-                          className="hover:text-emerald-300 transition-colors duration-200 cursor-pointer text-xs font-bold font-sans"
+                          className="hover:text-emerald-400 transition-colors duration-200 cursor-pointer text-xs font-medium font-sans"
                         >
                           শর্তাবলী ও দায়মুক্তি (Terms of Service)
                         </button>
                       </div>
-                      <p className="text-[10px] text-slate-600 font-mono mt-4">
-                        © 2026 Livekhela.site. সর্বস্বত্ব সংরক্ষিত।
+                      <p className="text-[10px] text-slate-600 font-mono mt-1">
+                        © 2026 Livekhela.site. All Rights Reserved.
                       </p>
                     </div>
                   </footer>
