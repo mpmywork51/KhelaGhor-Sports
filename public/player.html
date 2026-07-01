@@ -1,6 +1,41 @@
 <!DOCTYPE html>
 <html lang="bn">
 <head>
+  <script>
+    // Suppress cross-origin "Script error." commonly caused by browser extensions or iframe sandboxing
+    window.addEventListener('error', function(e) {
+      if (e.message === "Script error." || !e.filename) {
+        e.stopImmediatePropagation();
+        e.preventDefault();
+      }
+    }, true);
+    
+    window.addEventListener('unhandledrejection', function(e) {
+      if (e.reason && (e.reason.message === "Script error." || !e.reason.stack)) {
+        e.preventDefault();
+      }
+    }, true);
+  </script>
+  <script>
+    (function() {
+      try {
+        var originalFetch = window.fetch;
+        var fetchValue = originalFetch;
+        Object.defineProperty(window, 'fetch', {
+          get: function() {
+            return fetchValue;
+          },
+          set: function(val) {
+            fetchValue = val;
+          },
+          configurable: true,
+          enumerable: true
+        });
+      } catch (e) {
+        console.warn("Could not patch window.fetch setter:", e);
+      }
+    })();
+  </script>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
   <title>লাইভ স্ট্রিম প্লেয়ার - LiveKhela</title>
@@ -12,6 +47,9 @@
   
   <!-- Hls.js with native features -->
   <script src="https://cdn.jsdelivr.net/npm/hls.js@1.4.12/dist/hls.min.js"></script>
+
+  <!-- ArtPlayer.js Library -->
+  <script src="https://cdn.jsdelivr.net/npm/artplayer@5.4.0/dist/artplayer.js"></script>
   
   <!-- official Supabase JS Client library -->
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.39.8/dist/umd/supabase.js"></script>
@@ -91,8 +129,8 @@
     <!-- Active Video Player Container -->
     <div id="player_wrapper" class="relative w-full aspect-video bg-zinc-950 rounded-2xl overflow-hidden border border-white/5 shadow-2xll group">
       
-      <!-- Native Video Tag -->
-      <video id="video_element" class="w-full h-full object-contain" playsinline preload="auto"></video>
+      <!-- ArtPlayer Container -->
+      <div id="artplayer_container" class="w-full h-full"></div>
       
       <!-- Buffering & Status Overlay -->
       <div id="loader_overlay" class="absolute inset-0 flex flex-col items-center justify-center bg-black/70 backdrop-blur-sm z-10">
@@ -104,48 +142,6 @@
           <i class="fa-solid fa-circle-notch animate-spin"></i>
           চ্যানেল তথ্য লোড হচ্ছে...
         </p>
-      </div>
-
-      <!-- Play Button Overlay (Big Center Clickable Play Accent) -->
-      <div id="big_play_btn" class="hidden absolute inset-0 flex items-center justify-center bg-black/30 backdrop-blur-[2px] cursor-pointer z-10 transition">
-        <button class="w-14 h-14 rounded-full bg-emerald-500 text-zinc-950 shadow-xl shadow-emerald-500/20 flex items-center justify-center text-xl hover:scale-110 active:scale-95 transition-all duration-300">
-          <i class="fa-solid fa-play ml-1"></i>
-        </button>
-      </div>
-
-      <!-- Control Bars (Responsive Glassmorphic UI) -->
-      <div id="player_controls" class="absolute bottom-0 left-0 right-0 p-4 bg-gradient-to-t from-black/95 to-transparent flex items-center justify-between opacity-0 pointer-events-none group-hover:opacity-100 transition-opacity duration-300 z-20">
-        <div class="flex items-center gap-4">
-          <button id="play_pause_btn" class="text-white hover:text-emerald-400 text-lg transition active:scale-90">
-            <i class="fa-solid fa-pause"></i>
-          </button>
-          
-          <!-- Mute Option & Standard Slider -->
-          <div class="flex items-center gap-2">
-            <button id="mute_btn" class="text-white hover:text-emerald-400 text-lg transition">
-              <i class="fa-solid fa-volume-high"></i>
-            </button>
-            <input id="volume_slider" type="range" min="0" max="1" step="0.05" value="1" class="w-12 sm:w-20 h-1 bg-white/20 rounded-lg appearance-none cursor-pointer accent-emerald-500 focus:outline-none">
-          </div>
-
-          <span class="flex items-center gap-1.5 px-2 py-0.5 rounded bg-rose-600 text-white font-mono text-[9px] font-black uppercase tracking-wider animate-pulse select-none">
-            <span class="w-1 h-1 rounded-full bg-white animate-ping"></span>
-            LIVE
-          </span>
-        </div>
-
-        <div class="flex items-center gap-3">
-          <!-- Force Scale Display mode Toggle -->
-          <button id="scale_btn" class="px-2.5 py-1 rounded-full bg-white/10 hover:bg-white/20 text-white text-[10px] font-semibold border border-white/5 transition active:scale-95 flex items-center gap-1">
-            <i class="fa-solid fa-expand"></i>
-            <span id="scale_text">ফিট</span>
-          </button>
-
-          <!-- Native HTML Fullscreen Toggle -->
-          <button id="fullscreen_btn" class="w-8 h-8 rounded-full bg-white/10 hover:bg-white/20 text-white hover:text-emerald-400 flex items-center justify-center border border-white/5 transition active:scale-90">
-            <i class="fa-solid fa-expand"></i>
-          </button>
-        </div>
       </div>
     </div>
 
@@ -175,81 +171,6 @@
 
   <!-- Complete Core Integration Logic -->
   <script>
-    // =========================================================================
-    // ANTI-DEBUGGING, SHORTCUT BLOCKER & DEVTOOLS PROTECTION ENGINE
-    // =========================================================================
-    (function() {
-      // 1. Block Context Menu (Right Click)
-      document.addEventListener('contextmenu', function(e) {
-        e.preventDefault();
-      }, false);
-
-      // 2. Block Command/Control Keys and Inspect Shortcuts
-      document.addEventListener('keydown', function(e) {
-        // F12 key
-        if (e.keyCode === 123) {
-          e.preventDefault();
-          triggerRedirect();
-          return false;
-        }
-        // Ctrl+Shift+I or Cmd+Opt+I
-        if (e.ctrlKey && e.shiftKey && e.keyCode === 73) {
-          e.preventDefault();
-          triggerRedirect();
-          return false;
-        }
-        // Ctrl+Shift+J or Cmd+Opt+J
-        if (e.ctrlKey && e.shiftKey && e.keyCode === 74) {
-          e.preventDefault();
-          triggerRedirect();
-          return false;
-        }
-        // Ctrl+U (View Source)
-        if (e.ctrlKey && e.keyCode === 85) {
-          e.preventDefault();
-          triggerRedirect();
-          return false;
-        }
-        // Ctrl+Shift+C (Inspect element)
-        if (e.ctrlKey && e.shiftKey && e.keyCode === 67) {
-          e.preventDefault();
-          triggerRedirect();
-          return false;
-        }
-      }, false);
-
-      // Helper redirect function
-      function triggerRedirect() {
-        window.location.replace("about:blank");
-      }
-
-      // 3. DevTools Detection & Infinite Debugger Protection Loop
-      function startAntiDebugCheck() {
-        function check() {
-          const startTime = performance.now();
-          // Standard debugger trap statement
-          debugger;
-          const endTime = performance.now();
-          
-          // If debugging is active, the debugger statement pauses execution,
-          // causing a significant difference in time.
-          if (endTime - startTime > 100) {
-            triggerRedirect();
-          }
-        }
-        
-        // Loop execution every 200 milliseconds to deter active inspection
-        setInterval(check, 200);
-      }
-
-      // Safe execution initialization
-      try {
-        startAntiDebugCheck();
-      } catch (err) {
-        console.warn(err);
-      }
-    })();
-
     // 1. Database Credentials & Configuration
     const FIREBASE_CONFIG = {
       projectId: "ai-studio-applet-webapp-8d448",
@@ -265,23 +186,12 @@
     // 2. State & DOM References
     let loadedUrls = [];
     let activeUrlIndex = 0;
-    let hlsInstance = null;
-    let controlsTimer = null;
-    let aspectMode = 'contain';
+    let art = null;
 
-    const video = document.getElementById('video_element');
     const titleEl = document.getElementById('channel_title');
     const indicatorEl = document.getElementById('stream_source_indicator');
     const loaderOverlay = document.getElementById('loader_overlay');
     const loaderText = document.getElementById('loader_text');
-    const bigPlayBtn = document.getElementById('big_play_btn');
-    const playerControls = document.getElementById('player_controls');
-    const playPauseBtn = document.getElementById('play_pause_btn');
-    const muteBtn = document.getElementById('mute_btn');
-    const volumeSlider = document.getElementById('volume_slider');
-    const scaleBtn = document.getElementById('scale_btn');
-    const scaleText = document.getElementById('scale_text');
-    const fullscreenBtn = document.getElementById('fullscreen_btn');
     const serversContainer = document.getElementById('server_selectors');
     const errorPanel = document.getElementById('error_panel');
     const wrapper = document.getElementById('player_wrapper');
@@ -380,118 +290,157 @@
       initializeStreamingPlayer(loadedUrls[activeUrlIndex]);
     }
 
-    // 4. Low-latency smooth loading HLS Player implementation
+    // 4. Low-latency smooth loading HLS Player implementation with ArtPlayer
     function initializeStreamingPlayer(streamUrl) {
       loaderOverlay.classList.remove('hidden');
       loaderText.innerHTML = `<i class="fa-solid fa-circle-notch animate-spin text-emerald-400"></i> প্লেব্যাক তৈরি হচ্ছে...`;
-      bigPlayBtn.classList.add('hidden');
       errorPanel.classList.add('hidden');
 
       // Stop previous instance cleanly
-      if (hlsInstance) {
-        hlsInstance.destroy();
-        hlsInstance = null;
+      if (art) {
+        art.destroy();
+        art = null;
       }
 
-      if (Hls.isSupported()) {
-        console.log("Initializing low-latency Native HlsJS Player for Stream:", streamUrl);
-        
-        // Precise parameter settings to prevent buffering on high-traffic channels
-        const config = {
-          enableWorker: true,
-          enableSoftwareAES: false,    // Use hardware web crypto decoder instead of pure javascript fallback
-          lowLatencyMode: true,
-          maxBufferLength: 5,          // Tight buffer length (5 seconds)
-          maxMaxBufferLength: 8,       // Restrict maximum buffer accumulation to pre-emptively prevent lag
-          liveSyncDuration: 3,         // Low-delay sync duration (3 seconds) for immediate action
-          liveMaxLatencyDuration: 6,   // Cap maximum latency at 6 seconds
-          backBufferLength: 5,         // Drop old played segment buffers promptly
-          manifestLoadingTimeOut: 10000,
-          manifestLoadingMaxRetry: 10,
-          manifestLoadingRetryDelay: 500,
-          levelLoadingTimeOut: 10000,
-          levelLoadingMaxRetry: 10,
-          levelLoadingRetryDelay: 500,
-          fragLoadingTimeOut: 10000,
-          fragLoadingMaxRetry: 10,
-          fragLoadingRetryDelay: 500,
-          maxBufferHole: 0.5,          // Jump small holes instantly
-          highBufferWatchdogPeriod: 2,
-          nudgeMaxRetry: 15,
-          nudgeDuration: 0.1,
-          nudgeDelay: 0.1,
-          liveDurationInfinity: true,
-          capLevelToPlayerSize: true,  // Save decoding processing load by capping resolution matching player dimensions
-          autoStartLoad: true
-        };
+      art = new Artplayer({
+        container: '#artplayer_container',
+        url: streamUrl,
+        type: 'm3u8',
+        fullscreen: true,
+        fullscreenWeb: true,
+        volume: 1.0,
+        isLive: true,
+        muted: false,
+        autoplay: true,
+        pip: true,
+        autoSize: false,
+        autoMini: false,
+        theme: '#10b981', // emerald theme
+        click: false,     // Disable default click-to-play-pause behavior
+        dbclick: true,    // Double click to toggle fullscreen on PC
+        aspectRatio: '16:9', // Initial 16:9 aspect ratio
+        customType: {
+          m3u8: function (video, url, artInstance) {
+            if (Hls.isSupported()) {
+              if (artInstance.hls) artInstance.hls.destroy();
+              const hls = new Hls({
+                enableWorker: true,
+                enableSoftwareAES: false,    // Use hardware web crypto decoder instead of pure javascript fallback
+                lowLatencyMode: true,
+                maxBufferLength: 5,          // Tight buffer length (5 seconds)
+                maxMaxBufferLength: 8,       // Restrict maximum buffer accumulation to pre-emptively prevent lag
+                liveSyncDuration: 3,         // Low-delay sync duration (3 seconds) for immediate action
+                liveMaxLatencyDuration: 6,   // Cap maximum latency at 6 seconds
+                backBufferLength: 5,         // Drop old played segment buffers promptly
+                maxBufferHole: 0.5,          // Jump small holes instantly
+                capLevelToPlayerSize: true,  // Save decoding processing load by capping resolution matching player dimensions
+                autoStartLoad: true
+              });
+              hls.loadSource(url);
+              hls.attachMedia(video);
+              artInstance.hls = hls;
 
-        const hls = new Hls(config);
-        hlsInstance = hls;
+              hls.on(Hls.Events.MANIFEST_PARSED, () => {
+                loaderOverlay.classList.add('hidden');
+              });
 
-        hls.loadSource(streamUrl);
-        hls.attachMedia(video);
+              hls.on(Hls.Events.ERROR, (event, data) => {
+                console.warn(`HLS Webview Error Detail: ${data.details}`, data);
+                if (data.fatal) {
+                  switch (data.type) {
+                    case Hls.ErrorTypes.NETWORK_ERROR:
+                      console.warn("Fatal HLS network error, trying to load-recover...");
+                      hls.startLoad();
+                      break;
+                    case Hls.ErrorTypes.MEDIA_ERROR:
+                      console.warn("Fatal HLS media error, trying to recoverMediaError...");
+                      hls.recoverMediaError();
+                      break;
+                    default:
+                      console.error("Unrecoverable fatal error, falling back...");
+                      hls.destroy();
+                      handleStreamFailureFallback();
+                      break;
+                  }
+                } else {
+                  // Non-fatal fragment download failures
+                  if (data.details === Hls.ErrorDetails.FRAG_LOAD_ERROR || 
+                      data.details === Hls.ErrorDetails.FRAG_LOAD_TIMEOUT ||
+                      data.details === Hls.ErrorDetails.LEVEL_LOAD_ERROR ||
+                      data.details === Hls.ErrorDetails.LEVEL_LOAD_TIMEOUT) {
+                    console.log("Non-fatal fragment load error. Retrying load instantly...");
+                    hls.startLoad();
+                  }
+                }
+              });
 
-        hls.on(Hls.Events.MANIFEST_PARSED, () => {
-          loaderOverlay.classList.add('hidden');
-          triggerAutoPlay();
-        });
-
-        hls.on(Hls.Events.ERROR, (event, data) => {
-          console.warn(`HLS Webview Error Detail: ${data.details}`, data);
-          if (data.fatal) {
-            switch (data.type) {
-              case Hls.ErrorTypes.NETWORK_ERROR:
-                console.warn("Fatal HLS network error, trying to load-recover...");
-                hls.startLoad();
-                break;
-              case Hls.ErrorTypes.MEDIA_ERROR:
-                console.warn("Fatal HLS media error, trying to recoverMediaError...");
-                hls.recoverMediaError();
-                break;
-              default:
-                console.error("Unrecoverable fatal error, falling back...");
-                hls.destroy();
+              artInstance.on('destroy', () => hls.destroy());
+            } else if (video.canPlayType('application/vnd.apple.mpegurl')) {
+              // Native fallback (Safari, iOS device)
+              console.log("Direct iOS Native playback initialized:", url);
+              video.src = url;
+              video.addEventListener('loadedmetadata', () => {
+                loaderOverlay.classList.add('hidden');
+              });
+              video.addEventListener('error', () => {
                 handleStreamFailureFallback();
-                break;
-            }
-          } else {
-            // Non-fatal fragment download failures
-            if (data.details === Hls.ErrorDetails.FRAG_LOAD_ERROR || 
-                data.details === Hls.ErrorDetails.FRAG_LOAD_TIMEOUT ||
-                data.details === Hls.ErrorDetails.LEVEL_LOAD_ERROR ||
-                data.details === Hls.ErrorDetails.LEVEL_LOAD_TIMEOUT) {
-              console.log("Non-fatal fragment load error. Retrying load instantly...");
-              hls.startLoad();
+              });
+            } else {
+              showCriticalError("আপনার ইন্টারনেট ব্রাউজারটিতে m3u8 লাইভ প্লেব্যাক সমর্থিত নয়।");
             }
           }
-        });
-      } else if (video.canPlayType('application/vnd.apple.mpegurl')) {
-        // Native fallback (Safari, iOS device)
-        console.log("Direct iOS Native playback initialized:", streamUrl);
-        video.src = streamUrl;
-        video.addEventListener('loadedmetadata', () => {
-          loaderOverlay.classList.add('hidden');
-          triggerAutoPlay();
-        });
-        video.addEventListener('error', () => {
-          handleStreamFailureFallback();
-        });
-      } else {
-        showCriticalError("আপনার ইন্টারনেট ব্রাউজারটিতে m3u8 লাইভ প্লেব্যাক সমর্থিত নয়।");
-      }
-    }
+        },
+        settings: [
+          {
+            width: 200,
+            html: 'আস্পেক্ট রেশিও (Aspect Ratio)',
+            tooltip: '16:9',
+            selector: [
+              {
+                default: true,
+                html: '16:9',
+              },
+              {
+                html: '4:3',
+              },
+              {
+                html: 'Auto Fit',
+              },
+            ],
+            onSelect: function (item) {
+              if (item.html === 'Auto Fit') {
+                art.aspectRatio = '';
+              } else {
+                art.aspectRatio = item.html;
+              }
+              return item.html;
+            },
+          },
+        ],
+      });
 
-    // Try starting playback automated
-    function triggerAutoPlay() {
-      video.play()
-        .then(() => {
-          updatePlayPauseIcon(true);
-        })
-        .catch(() => {
-          // Playback blocked, show play icon overlay
-          bigPlayBtn.classList.remove('hidden');
-          updatePlayPauseIcon(false);
-        });
+      // Premium Touch & Click Behavior (Crucial)
+      // When a user clicks or taps anywhere on the video screen, it must NEVER pause or play the video.
+      // Instead, clicking/tapping the screen should ONLY toggle the visibility of the control bar.
+      art.on('video:click', function (event) {
+        event.preventDefault();
+        
+        // Toggle 'art-hover' class to show/hide control bar
+        if (art.container.classList.contains('art-hover')) {
+          art.container.classList.remove('art-hover');
+        } else {
+          art.container.classList.add('art-hover');
+          art.container.dispatchEvent(new Event('mousemove'));
+        }
+      });
+
+      // Hide custom loader overlay as soon as player starts playback
+      art.on('play', () => {
+        loaderOverlay.classList.add('hidden');
+      });
+      art.on('playing', () => {
+        loaderOverlay.classList.add('hidden');
+      });
     }
 
     // Server-side Failover automatic switching
@@ -524,134 +473,11 @@
     // Show visual warning
     function showCriticalError(message) {
       loaderOverlay.classList.add('hidden');
-      bigPlayBtn.classList.add('hidden');
       errorPanel.classList.remove('hidden');
       
       const errorMsgEl = errorPanel.querySelector('p');
       if (errorMsgEl) errorMsgEl.innerText = message;
     }
-
-    // 5. Controls & Listeners
-    function updatePlayPauseIcon(isPlaying) {
-      const icon = playPauseBtn.querySelector('i');
-      if (isPlaying) {
-        icon.className = 'fa-solid fa-pause';
-      } else {
-        icon.className = 'fa-solid fa-play';
-      }
-    }
-
-    playPauseBtn.onclick = (e) => {
-      e.stopPropagation();
-      if (video.paused) {
-        video.play();
-        updatePlayPauseIcon(true);
-      } else {
-        video.pause();
-        updatePlayPauseIcon(false);
-      }
-      resetControlsTimeout();
-    };
-
-    bigPlayBtn.onclick = () => {
-      video.play();
-      bigPlayBtn.classList.add('hidden');
-      updatePlayPauseIcon(true);
-      resetControlsTimeout();
-    };
-
-    video.onplay = () => updatePlayPauseIcon(true);
-    video.onpause = () => updatePlayPauseIcon(false);
-
-    // Mute/Volume
-    muteBtn.onclick = (e) => {
-      e.stopPropagation();
-      video.muted = !video.muted;
-      const icon = muteBtn.querySelector('i');
-      if (video.muted) {
-        icon.className = 'fa-solid fa-volume-xmark';
-        volumeSlider.value = 0;
-      } else {
-        icon.className = 'fa-solid fa-volume-high';
-        volumeSlider.value = video.volume;
-      }
-      resetControlsTimeout();
-    };
-
-    volumeSlider.oninput = (e) => {
-      e.stopPropagation();
-      const val = parseFloat(e.target.value);
-      video.volume = val;
-      video.muted = (val === 0);
-      const icon = muteBtn.querySelector('i');
-      if (video.muted) {
-        icon.className = 'fa-solid fa-volume-xmark';
-      } else {
-        icon.className = 'fa-solid fa-volume-high';
-      }
-      resetControlsTimeout();
-    };
-
-    // Fullscreen Integration
-    fullscreenBtn.onclick = (e) => {
-      e.stopPropagation();
-      if (!document.fullscreenElement) {
-        if (wrapper.requestFullscreen) {
-          wrapper.requestFullscreen();
-        } else if (wrapper.webkitRequestFullscreen) {
-          wrapper.webkitRequestFullscreen();
-        }
-      } else {
-        if (document.exitFullscreen) {
-          document.exitFullscreen();
-        }
-      }
-      resetControlsTimeout();
-    };
-
-    // Toggle aspect states
-    scaleBtn.onclick = (e) => {
-      e.stopPropagation();
-      if (aspectMode === 'contain') {
-        aspectMode = 'cover';
-        video.className = 'w-full h-full object-cover';
-        scaleText.innerHTML = 'জুম';
-      } else if (aspectMode === 'cover') {
-        aspectMode = 'stretch';
-        video.className = 'w-full h-full object-fill';
-        scaleText.innerHTML = 'ফুল';
-      } else {
-        aspectMode = 'contain';
-        video.className = 'w-full h-full object-contain';
-        scaleText.innerHTML = 'ফিট';
-      }
-      resetControlsTimeout();
-    };
-
-    // Auto-hide controls
-    function resetControlsTimeout() {
-      playerControls.classList.remove('opacity-0', 'pointer-events-none');
-      playerControls.classList.add('opacity-100');
-      
-      if (controlsTimer) clearTimeout(controlsTimer);
-      controlsTimer = setTimeout(() => {
-        if (!video.paused) {
-          playerControls.classList.remove('opacity-100');
-          playerControls.classList.add('opacity-0', 'pointer-events-none');
-        }
-      }, 3500);
-    }
-
-    wrapper.onmousemove = resetControlsTimeout;
-    wrapper.onclick = () => {
-      if (playerControls.classList.contains('opacity-0')) {
-        resetControlsTimeout();
-      } else {
-        playerControls.classList.remove('opacity-100');
-        playerControls.classList.add('opacity-0', 'pointer-events-none');
-        if (controlsTimer) clearTimeout(controlsTimer);
-      }
-    };
 
     // Start everything on load
     window.onload = () => {
