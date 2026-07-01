@@ -34,6 +34,7 @@ export default function VideoPlayer({ server1Url, server2Url, server3Url, server
   const videoRef = useRef<HTMLVideoElement | null>(null);
   const playerContainerRef = useRef<HTMLDivElement | null>(null);
   const hlsRef = useRef<Hls | null>(null);
+  const timelineRef = useRef<HTMLDivElement | null>(null);
 
   const [isPlaying, setIsPlaying] = useState(false);
   const [currentUrl, setCurrentUrl] = useState(server1Url || server2Url || server3Url || server4Url || '');
@@ -211,12 +212,79 @@ export default function VideoPlayer({ server1Url, server2Url, server3Url, server
     return `${mm}:${ss}`;
   };
 
-  const renderTimer = () => {
-    if (duration && isFinite(duration) && duration > 0) {
-      return `${formatTime(currentTime)} / ${formatTime(duration)}`;
+  const getActiveTimeAndDuration = () => {
+    const video = videoRef.current;
+    let cur = currentTime;
+    let dur = duration;
+
+    if (video && (!dur || !isFinite(dur) || dur <= 0)) {
+      try {
+        if (video.seekable && video.seekable.length > 0) {
+          dur = video.seekable.end(video.seekable.length - 1);
+          cur = video.currentTime;
+        }
+      } catch (e) {
+        // Safe catch
+      }
     }
-    // For live streams, show watch time of current session
-    return formatTime(currentTime && currentTime > 0 && currentTime !== Infinity ? currentTime : sessionTime);
+
+    if (!dur || !isFinite(dur) || dur <= 0) {
+      dur = Math.max(sessionTime, cur, 1);
+      cur = cur || sessionTime;
+    }
+
+    return { cur, dur };
+  };
+
+  const calculateProgressPercent = () => {
+    const { cur, dur } = getActiveTimeAndDuration();
+    if (dur && isFinite(dur) && dur > 0) {
+      return Math.min(100, (cur / dur) * 100);
+    }
+    return 0;
+  };
+
+  const calculateBufferedPercent = () => {
+    const { cur, dur } = getActiveTimeAndDuration();
+    if (dur && isFinite(dur) && dur > 0) {
+      const video = videoRef.current;
+      if (!video) return 0;
+      const buffered = video.buffered;
+      if (buffered.length === 0) return 0;
+      const time = video.currentTime;
+      for (let i = 0; i < buffered.length; i++) {
+        if (time >= buffered.start(i) && time <= buffered.end(i)) {
+          return Math.min(100, (buffered.end(i) / dur) * 100);
+        }
+      }
+      return Math.min(100, (buffered.end(buffered.length - 1) / dur) * 100);
+    }
+    return 0;
+  };
+
+  const handleTimelineClick = (e: React.MouseEvent<HTMLDivElement>) => {
+    e.stopPropagation();
+    const video = videoRef.current;
+    const timeline = timelineRef.current;
+    if (!video || !timeline) return;
+
+    const rect = timeline.getBoundingClientRect();
+    const clickX = e.clientX - rect.left;
+    const width = rect.width;
+    const clickPercent = Math.max(0, Math.min(1, clickX / width));
+
+    const { dur } = getActiveTimeAndDuration();
+    if (dur && isFinite(dur) && dur > 0) {
+      const targetTime = clickPercent * dur;
+      video.currentTime = targetTime;
+      setCurrentTime(targetTime);
+    }
+    resetControlsTimeout();
+  };
+
+  const renderTimer = () => {
+    const { cur, dur } = getActiveTimeAndDuration();
+    return `${formatTime(cur)} / ${formatTime(dur)}`;
   };
 
   // Auto-hide quality menu on controls fade
@@ -826,42 +894,8 @@ export default function VideoPlayer({ server1Url, server2Url, server3Url, server
           {title}
         </h3>
 
-        {/* Complete Server Failover Selectors with Proxy and Quality integrations */}
+        {/* Complete Server Failover Selectors with Quality integrations */}
         <div className="flex items-center gap-1.5 sm:gap-2">
-          {/* Jetpack Media3 ExoPlayer Engine Dashboard Toggle Button */}
-          <button
-            id="player_engine_dashboard_toggle"
-            onClick={(e) => {
-              e.stopPropagation();
-              setShowEngineDashboard(!showEngineDashboard);
-              resetControlsTimeout();
-            }}
-            className={`flex items-center gap-1 px-2 py-0.5 rounded-full border backdrop-blur-md transition-all duration-300 active:scale-95 text-[10px] sm:text-xs font-sans font-black shrink-0 ${
-              showEngineDashboard 
-                ? 'bg-emerald-500/20 text-emerald-300 border-emerald-500/35 shadow-md shadow-emerald-500/5' 
-                : 'bg-white/5 border-white/10 text-white hover:bg-white/10'
-            }`}
-            title="গুগল Jetpack Media3 ExoPlayer বাফার নিয়ন্ত্রণ"
-          >
-            <Cpu size={11} className={showEngineDashboard ? 'text-emerald-300 animate-pulse' : 'text-white/60'} />
-            <span className="tracking-wide text-[9px] sm:text-[10px]">{showEngineDashboard ? 'EXO ON' : 'EXO'}</span>
-          </button>
-
-          {/* Compact VPN / Proxy Toggle Button with Shield Icon */}
-          <button
-            id="player_proxy_toggle"
-            onClick={toggleProxy}
-            className={`flex items-center gap-1 px-2 py-0.5 rounded-full border backdrop-blur-md transition-all duration-300 active:scale-95 text-[10px] sm:text-xs font-sans font-black shrink-0 ${
-              useProxy 
-                ? 'bg-emerald-500/20 text-emerald-300 border-emerald-500/35 shadow-md shadow-emerald-500/5' 
-                : 'bg-white/5 border-white/10 text-white hover:bg-white/10'
-            }`}
-            title={useProxy ? "প্রক্সি চালু (ON)" : "প্রক্সি বন্ধ (OFF)"}
-          >
-            <Shield size={11} className={useProxy ? 'fill-emerald-400/20 text-emerald-300 animate-pulse' : 'text-white/60'} />
-            <span className="tracking-wide text-[9px] sm:text-[10px]">{useProxy ? 'ON' : 'OFF'}</span>
-          </button>
-
           {/* S1-S4 Server Selectors */}
           <div className="flex gap-0.5 bg-white/5 p-0.5 rounded-full border border-white/10 backdrop-blur-md scale-95 shadow-md">
             {server1Url && (
@@ -973,158 +1007,7 @@ export default function VideoPlayer({ server1Url, server2Url, server3Url, server
         </div>
       </div>
 
-      {/* Jetpack Media3 ExoPlayer Control Panel Overlay */}
-      {showEngineDashboard && (
-        <div 
-          className="absolute inset-0 flex items-center justify-center bg-black/75 backdrop-blur-md z-40 p-4"
-          onClick={(e) => {
-            e.stopPropagation();
-            setShowEngineDashboard(false);
-          }}
-        >
-          <div 
-            className="w-full max-w-sm sm:max-w-md bg-zinc-950/95 border border-white/15 rounded-2xl overflow-hidden shadow-2xl p-4 sm:p-5 flex flex-col gap-3 animate-in fade-in zoom-in-95 duration-200"
-            onClick={(e) => e.stopPropagation()}
-          >
-            {/* Header */}
-            <div className="flex items-center justify-between border-b border-white/10 pb-2">
-              <div className="flex items-center gap-2">
-                <Cpu className="text-emerald-400 animate-pulse" size={18} />
-                <div>
-                  <h4 className="text-white font-sans text-xs sm:text-sm font-black tracking-wide uppercase">
-                    Jetpack Media3 ExoPlayer Engine
-                  </h4>
-                  <div className="flex items-center gap-1.5 mt-0.5">
-                    <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-ping" />
-                    <span className="text-[9px] text-emerald-400 font-bold uppercase tracking-wider">
-                      সক্রিয় ও অপ্টিমাইজড (Active & Optimized)
-                    </span>
-                  </div>
-                </div>
-              </div>
-              <button 
-                onClick={() => setShowEngineDashboard(false)}
-                className="text-zinc-400 hover:text-white bg-white/5 hover:bg-white/10 rounded-full p-1 transition"
-              >
-                <Minimize size={14} />
-              </button>
-            </div>
 
-            {/* Live Telemetry Display */}
-            <div className="grid grid-cols-2 gap-2 p-2.5 rounded-xl bg-white/5 border border-white/5 backdrop-blur-sm">
-              <div className="flex flex-col gap-0.5">
-                <span className="text-[9px] text-zinc-500 uppercase font-black tracking-wider">বাফার স্থিতি (Buffer)</span>
-                <div className="flex items-baseline gap-1 text-emerald-400 font-mono font-bold text-xs sm:text-sm">
-                  <span>{liveBufferedSecs}s</span>
-                  <span className="text-[9px] text-zinc-400 font-normal">লোডেড</span>
-                </div>
-                {/* Visual buffer bar */}
-                <div className="w-full h-1 bg-white/10 rounded-full overflow-hidden mt-1">
-                  <div 
-                    className="h-full bg-emerald-500 transition-all duration-300" 
-                    style={{ width: `${Math.min(100, (liveBufferedSecs / maxBuffer) * 100)}%` }}
-                  />
-                </div>
-              </div>
-              
-              <div className="flex flex-col gap-0.5">
-                <span className="text-[9px] text-zinc-500 uppercase font-black tracking-wider">ইন্টারনেট স্পিড (Speed)</span>
-                <div className="text-emerald-400 font-mono font-bold text-xs sm:text-sm">
-                  {liveBandwidth} <span className="text-[10px] text-zinc-400 font-normal">Mbps</span>
-                </div>
-                <div className="text-[9px] text-zinc-400 mt-1 truncate">
-                  {liveBandwidth > 15 ? '✓ সুপার ফাস্ট কানেকশন' : liveBandwidth > 5 ? '⚡ স্টেবল কানেকশন' : '⚠️ স্লো কানেকশন'}
-                </div>
-              </div>
-            </div>
-
-            {/* Buffering Parameters */}
-            <div className="flex flex-col gap-3 my-1">
-              {/* Min Buffer */}
-              <div className="flex flex-col gap-1">
-                <div className="flex justify-between items-center text-[11px] sm:text-xs">
-                  <span className="text-zinc-200 font-semibold flex items-center gap-1">
-                    মিনিমাম বাফার (Min Buffer)
-                  </span>
-                  <span className="text-emerald-400 font-mono font-extrabold">{minBuffer}s</span>
-                </div>
-                <input 
-                  type="range" 
-                  min="5" 
-                  max="30" 
-                  step="1"
-                  value={minBuffer} 
-                  onChange={(e) => updateMinBuffer(parseInt(e.target.value))}
-                  className="w-full h-1 bg-white/10 rounded-lg appearance-none cursor-pointer accent-emerald-500"
-                />
-                <p className="text-[9px] text-zinc-400 leading-relaxed">
-                  * প্লেয়ারে সর্বদা সর্বনিম্ন যত সেকেন্ডের ভিডিও ব্যাকআপ লোড করা থাকবে।
-                </p>
-              </div>
-
-              {/* Max Buffer */}
-              <div className="flex flex-col gap-1">
-                <div className="flex justify-between items-center text-[11px] sm:text-xs">
-                  <span className="text-zinc-200 font-semibold">সর্বোচ্চ বাফার (Max Buffer)</span>
-                  <span className="text-emerald-400 font-mono font-extrabold">{maxBuffer}s</span>
-                </div>
-                <input 
-                  type="range" 
-                  min="15" 
-                  max="60" 
-                  step="5"
-                  value={maxBuffer} 
-                  onChange={(e) => updateMaxBuffer(parseInt(e.target.value))}
-                  className="w-full h-1 bg-white/10 rounded-lg appearance-none cursor-pointer accent-emerald-500"
-                />
-                <p className="text-[9px] text-zinc-400 leading-relaxed">
-                  * সর্বোচ্চ যত সেকেন্ডের ভিডিও ফাইল অগ্রিম ডাউনলোড করে স্টোর করা হবে।
-                </p>
-              </div>
-
-              {/* Playback Buffer */}
-              <div className="flex flex-col gap-1">
-                <div className="flex justify-between items-center text-[11px] sm:text-xs">
-                  <span className="text-zinc-200 font-semibold">প্লেব্যাক বাফার (Playback Buffer)</span>
-                  <span className="text-emerald-400 font-mono font-extrabold">{playbackBuffer}s</span>
-                </div>
-                <input 
-                  type="range" 
-                  min="1" 
-                  max="10" 
-                  step="0.5"
-                  value={playbackBuffer} 
-                  onChange={(e) => updatePlaybackBuffer(parseFloat(e.target.value))}
-                  className="w-full h-1 bg-white/10 rounded-lg appearance-none cursor-pointer accent-emerald-500"
-                />
-                <p className="text-[9px] text-zinc-400 leading-relaxed">
-                  * লোডিং বা বাফারিং থেকে পুনরায় চালু হতে নূন্যতম যত সেকেন্ডের ভিডিও ফাইল অগ্রিম লোড হওয়া আবশ্যক।
-                </p>
-              </div>
-            </div>
-
-            {/* Bottom Controls / Apply */}
-            <div className="flex gap-2 border-t border-white/10 pt-3 mt-1">
-              <button
-                onClick={() => {
-                  setShowEngineDashboard(false);
-                  initializePlayer();
-                }}
-                className="flex-1 py-2 rounded-xl bg-emerald-500 hover:bg-emerald-400 active:scale-95 transition text-black text-xs font-bold text-center flex items-center justify-center gap-1.5"
-              >
-                <RefreshCw size={12} className="animate-spin-slow" />
-                <span>রিবুট ও অপ্টিমাইজ করুন</span>
-              </button>
-              <button
-                onClick={() => setShowEngineDashboard(false)}
-                className="px-4 py-2 rounded-xl bg-white/5 border border-white/10 hover:bg-white/10 text-white text-xs font-medium"
-              >
-                ঠিক আছে
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
 
       {/* Glassmorphic Auto buffering loader / CORS error displays */}
       {isBuffering && !hasError && (
@@ -1167,20 +1050,7 @@ export default function VideoPlayer({ server1Url, server2Url, server3Url, server
               </button>
             </div>
 
-            <button
-              onClick={toggleProxy}
-              className={`flex items-center gap-2 px-4 py-2 rounded-xl border transition-all duration-300 shadow-md text-xs font-sans font-semibold ${
-                useProxy 
-                  ? 'bg-emerald-500 text-black border-emerald-400 font-bold' 
-                  : 'bg-zinc-800/90 border-zinc-700 text-zinc-200 hover:bg-zinc-700'
-              }`}
-            >
-              <Shield size={14} className={useProxy ? 'fill-current animate-pulse' : ''} />
-              <span>নিরাপদ ভিপিএন (VPN) প্রক্সি: {useProxy ? 'চালু (ON)' : 'বন্ধ (OFF)'}</span>
-            </button>
-            <p className="text-[10px] text-zinc-400 max-w-xs leading-relaxed text-center">
-              * ভিপিএন বন্ধ থাকলে ভিডিও সরাসরি আপনার মোবাইল ইন্টারনেট দিয়ে লোড হবে। বাফারিং বা লোডিং সমস্যা হলে এটি চালু করে দেখতে পারেন।
-            </p>
+
           </div>
         </div>
       )}
@@ -1200,28 +1070,29 @@ export default function VideoPlayer({ server1Url, server2Url, server3Url, server
 
       {/* Bottom Control bar overlay */}
       <div 
-        className={`absolute bottom-0 left-0 right-0 p-3 sm:p-4 bg-gradient-to-t from-black/95 to-transparent flex items-center justify-between transition-opacity duration-300 z-20 gap-2 ${
+        className={`absolute bottom-0 left-0 right-0 p-3 sm:p-4 bg-gradient-to-t from-black/95 via-black/85 to-transparent flex items-center justify-between transition-opacity duration-300 z-20 gap-2.5 sm:gap-4 ${
           showControls || !isPlaying ? 'opacity-100' : 'opacity-0 pointer-events-none'
         }`}
         onClick={(e) => e.stopPropagation()}
       >
-        <div className="flex items-center gap-1.5 sm:gap-3 max-w-[70%]">
+        {/* Left Section: Play/Pause, Volume, Timer and Live tag */}
+        <div className="flex items-center gap-1.5 sm:gap-3 shrink-0">
           <button
             id="bottom_play_toggle"
             onClick={togglePlay}
             className="text-white hover:text-emerald-400 font-semibold active:scale-90 transition p-1 rounded-full bg-white/5 border border-white/10 backdrop-blur-md"
           >
-            {isPlaying ? <Pause size={16} className="fill-current" /> : <Play size={16} className="fill-current" />}
+            {isPlaying ? <Pause size={14} className="fill-current" /> : <Play size={14} className="fill-current" />}
           </button>
 
-          {/* Volume control with hover expand */}
+          {/* Volume control slider */}
           <div className="flex items-center gap-1 sm:gap-2 group/volume p-1 rounded-full bg-white/5 border border-white/10 backdrop-blur-md">
             <button
               id="player_mute_toggle"
               onClick={toggleMute}
               className="text-white hover:text-emerald-400 transition"
             >
-              {isMuted ? <VolumeX size={14} /> : <Volume2 size={14} />}
+              {isMuted ? <VolumeX size={12} /> : <Volume2 size={12} />}
             </button>
             <input
               id="player_volume_slider"
@@ -1235,19 +1106,45 @@ export default function VideoPlayer({ server1Url, server2Url, server3Url, server
             />
           </div>
 
-          {/* LIVE status indicator (Shortened to classic tiny LIVE pill) */}
-          <span className="flex items-center gap-0.5 sm:gap-1 px-1 py-0.5 rounded bg-rose-600/30 text-rose-400 border border-rose-500/20 backdrop-blur-md font-mono text-[8px] sm:text-[9px] font-black uppercase tracking-wider">
+          {/* New digital session / playback timer (e.g. 00:04 / 00:16) */}
+          <span className="text-zinc-200 font-mono text-[9px] sm:text-[11px] font-bold select-none whitespace-nowrap shrink-0">
+            {renderTimer()}
+          </span>
+
+          {/* Live Indicator tag */}
+          <span className="flex items-center gap-0.5 sm:gap-1 px-1.5 py-0.5 rounded bg-rose-600/30 text-rose-400 border border-rose-500/20 backdrop-blur-md font-mono text-[8px] sm:text-[9px] font-black uppercase tracking-wider shrink-0 select-none">
             <span className="w-1 h-1 rounded-full bg-rose-400 animate-ping" />
             LIVE
           </span>
-
-          {/* New digital session / playback timer */}
-          <span className="flex items-center gap-1 px-1.5 py-0.5 rounded-full bg-white/5 text-white font-mono text-[8px] sm:text-[10px] font-semibold border border-white/10 backdrop-blur-md shadow-md shrink-0">
-            <Clock size={10} className="text-emerald-400 animate-pulse" />
-            <span>{renderTimer()}</span>
-          </span>
         </div>
 
+        {/* Middle Section: Integrated Real-time Pre-download & Seeker Timeline ("লম্বা দাড়ি") */}
+        <div className="flex-1 min-w-[50px] sm:min-w-[100px] flex items-center select-none group/timeline">
+          <div 
+            ref={timelineRef}
+            onClick={handleTimelineClick}
+            className="w-full relative h-1 sm:h-1.5 hover:h-2 bg-white/10 hover:bg-white/15 rounded-full cursor-pointer transition-all flex items-center"
+          >
+            {/* Loaded/Buffered region (Pre-downloaded buffer) */}
+            <div 
+              className="absolute top-0 bottom-0 left-0 bg-white/20 rounded-full transition-all duration-300"
+              style={{ width: `${calculateBufferedPercent()}%` }}
+              title="Pre-downloaded Video Buffer"
+            />
+            {/* Played region */}
+            <div 
+              className="absolute top-0 bottom-0 left-0 bg-emerald-500 rounded-full shadow-sm shadow-emerald-500/20"
+              style={{ width: `${calculateProgressPercent()}%` }}
+            />
+            {/* Interactive playhead indicator dot */}
+            <div 
+              className="absolute w-2.5 h-2.5 sm:w-3 sm:h-3 rounded-full bg-emerald-400 border border-white shadow -translate-x-1/2 left-0 transition-transform scale-0 group-hover/timeline:scale-100 cursor-grab active:cursor-grabbing"
+              style={{ left: `${calculateProgressPercent()}%` }}
+            />
+          </div>
+        </div>
+
+        {/* Right Section: Aspect Ratio & Fullscreen Controls */}
         <div className="flex items-center gap-1.5 sm:gap-3 shrink-0">
           {/* Aspect Ratio Adjustment Toggle button */}
           <button
@@ -1266,7 +1163,7 @@ export default function VideoPlayer({ server1Url, server2Url, server3Url, server
             onClick={handleFullscreenToggle}
             className="p-1 sm:p-1.5 rounded-full bg-white/5 hover:bg-white/15 text-white hover:text-emerald-400 border border-white/10 active:scale-90 transition backdrop-blur-md"
           >
-            {isFullscreen ? <Minimize size={14} /> : <Maximize size={14} />}
+            {isFullscreen ? <Minimize size={12} /> : <Maximize size={12} />}
           </button>
         </div>
       </div>

@@ -2,17 +2,23 @@
 <html lang="en">
   <head>
     <script>
-      // Suppress cross-origin "Script error." commonly caused by browser extensions or iframe sandboxing
+      // Suppress cross-origin "Script error." commonly caused by browser extensions or iframe sandboxing, and benign AbortError
       window.addEventListener('error', function(e) {
-        if (e.message === "Script error." || !e.filename) {
+        var msg = e.message || "";
+        if (msg === "Script error." || !e.filename || msg.indexOf("aborted") !== -1 || msg.indexOf("AbortError") !== -1 || msg.indexOf("aborted a request") !== -1) {
           e.stopImmediatePropagation();
           e.preventDefault();
         }
       }, true);
       
       window.addEventListener('unhandledrejection', function(e) {
-        if (e.reason && (e.reason.message === "Script error." || !e.reason.stack)) {
-          e.preventDefault();
+        var reason = e.reason;
+        if (reason) {
+          var msg = reason.message || "";
+          var name = reason.name || "";
+          if (msg === "Script error." || !reason.stack || msg.indexOf("aborted") !== -1 || name === "AbortError" || msg.indexOf("aborted a request") !== -1) {
+            e.preventDefault();
+          }
         }
       }, true);
     </script>
